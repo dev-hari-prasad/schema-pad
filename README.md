@@ -1,4 +1,4 @@
-# SQL Coder
+# Better SQL
 
 A modern, interactive, web-based database schema designer and SQL generator. 
 
