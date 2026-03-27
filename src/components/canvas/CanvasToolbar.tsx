@@ -4,7 +4,7 @@ import React from 'react';
 import { useSchemaStore } from '@/store/schemaStore';
 import {
   Plus, GridFour, Code, MagnifyingGlassPlus, MagnifyingGlassMinus,
-  Trash, Robot, Gear, FileArrowUp, FolderPlus, ShareNetwork
+  Trash, Robot, Gear, FileArrowDown, FolderPlus, ShareNetwork
 } from '@phosphor-icons/react';
 import { PreferencesPanel } from '@/components/canvas/PreferencesPanel';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -94,7 +94,7 @@ export const CanvasToolbar: React.FC<Props> = ({ onOpenSQL, isSQLOpen = false })
                 tooltip="Toggle grid (G)"
                 active={showGrid}
               />
-              <ToolbarButton icon={<FileArrowUp size={18} />} onClick={() => fileInputRef.current?.click()} tooltip="Import SQL" />
+              <ToolbarButton icon={<FileArrowDown size={18} />} onClick={() => fileInputRef.current?.click()} tooltip="Import SQL" />
               <input type="file" accept=".sql,.txt" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
               
               {/* Animated View SQL Button */}
@@ -201,7 +201,7 @@ export const CanvasToolbar: React.FC<Props> = ({ onOpenSQL, isSQLOpen = false })
               initial={{ y: -20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ type: 'spring', stiffness: 400, damping: 25, delay: 0.1 }}
-              className="flex items-center gap-1.5 px-2 py-2 rounded-[10px] bg-floating-bg border border-floating-border shadow-sm"
+              className="flex items-center gap-1.5 px-2 py-1.5 rounded-[10px] bg-floating-bg border border-floating-border shadow-sm"
             >
               {/* Share Popover */}
               <Popover open={shareOpen} onOpenChange={setShareOpen}>
@@ -209,11 +209,13 @@ export const CanvasToolbar: React.FC<Props> = ({ onOpenSQL, isSQLOpen = false })
                   <TooltipTrigger asChild>
                     <PopoverTrigger asChild>
                       <motion.button
+                        type="button"
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
+                        onClick={() => setShareOpen((v) => !v)}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors font-medium text-[13px] ${
-                          shareOpen 
-                            ? 'bg-primary/15 text-primary' 
+                          shareOpen
+                            ? 'bg-primary/15 text-primary'
                             : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
                         }`}
                       >
@@ -239,7 +241,7 @@ export const CanvasToolbar: React.FC<Props> = ({ onOpenSQL, isSQLOpen = false })
                         height={190} 
                         dotColor="currentColor" 
                         className="text-primary/50"
-                        mapSamples={3000}
+                        mapSamples={1000}
                         dotRadius={0.5}
                       />
                     </div>

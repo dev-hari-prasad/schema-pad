@@ -2,6 +2,59 @@ import { create } from 'zustand';
 import type { TableNode, GroupNode, GroupColor, Relationship, Column, ColumnType, Cardinality } from '@/types/schema';
 import { DEFAULT_TABLE_WIDTH, TABLE_HEADER_HEIGHT, COLUMN_ROW_HEIGHT } from '@/types/schema';
 
+// Padding constants for groups
+const GROUP_PAD_LEFT = 24;
+const GROUP_PAD_RIGHT = 24;
+const GROUP_PAD_TOP = 44;
+const GROUP_PAD_BOTTOM = 24;
+const GROUP_MIN_WIDTH = 200;
+const GROUP_MIN_HEIGHT = 120;
+
+export function getTableHeight(table: TableNode): number {
+  return TABLE_HEADER_HEIGHT + table.columns.length * COLUMN_ROW_HEIGHT + 32;
+}
+
+function getTablesForGroup(tables: TableNode[], groupId: string): TableNode[] {
+  return tables.filter(t => t.groupId === groupId);
+}
+
+function computeGroupBounds(tables: TableNode[], group: GroupNode): { x: number; y: number; width: number; height: number } {
+  const groupTables = getTablesForGroup(tables, group.id);
+  if (groupTables.length === 0) {
+    return { x: group.position.x, y: group.position.y, width: Math.max(group.width, GROUP_MIN_WIDTH), height: Math.max(group.height, GROUP_MIN_HEIGHT) };
+  }
+
+  const minX = Math.min(...groupTables.map(t => t.position.x));
+  const minY = Math.min(...groupTables.map(t => t.position.y));
+  const maxX = Math.max(...groupTables.map(t => t.position.x + (t.width || DEFAULT_TABLE_WIDTH)));
+  const maxY = Math.max(...groupTables.map(t => t.position.y + getTableHeight(t)));
+
+  return {
+    x: minX - GROUP_PAD_LEFT,
+    y: minY - GROUP_PAD_TOP,
+    width: Math.max(GROUP_MIN_WIDTH, maxX - minX + GROUP_PAD_LEFT + GROUP_PAD_RIGHT),
+    height: Math.max(GROUP_MIN_HEIGHT, maxY - minY + GROUP_PAD_TOP + GROUP_PAD_BOTTOM),
+  };
+}
+
+function autoResizeAllGroups(tables: TableNode[], groups: GroupNode[]): GroupNode[] {
+  let changed = false;
+  const result = groups.map(g => {
+    const bounds = computeGroupBounds(tables, g);
+    if (
+      Math.abs(g.position.x - bounds.x) > 0.5 ||
+      Math.abs(g.position.y - bounds.y) > 0.5 ||
+      Math.abs(g.width - bounds.width) > 0.5 ||
+      Math.abs(g.height - bounds.height) > 0.5
+    ) {
+      changed = true;
+      return { ...g, position: { x: bounds.x, y: bounds.y }, width: bounds.width, height: bounds.height };
+    }
+    return g;
+  });
+  return changed ? result : groups;
+}
+
 interface SchemaStore {
   tables: TableNode[];
   groups: GroupNode[];
@@ -152,33 +205,21 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
       if (!group) return s;
 
       const groupedCount = s.tables.filter((t) => t.groupId === groupId).length;
-      const col = groupedCount % 3;
-      const row = Math.floor(groupedCount / 3);
-
+      const col = groupedCount % 2;
+      const row = Math.floor(groupedCount / 2);
       const colWidth = DEFAULT_TABLE_WIDTH + 22;
       const baseTableHeight = TABLE_HEADER_HEIGHT + COLUMN_ROW_HEIGHT + 32;
       const rowHeight = baseTableHeight + 26;
 
       const nextPos = {
-        x: group.position.x + 24 + col * colWidth,
-        y: group.position.y + 44 + row * rowHeight,
+        x: group.position.x + GROUP_PAD_LEFT + col * colWidth,
+        y: group.position.y + GROUP_PAD_TOP + row * rowHeight,
       };
 
-      const requiredRight = nextPos.x + DEFAULT_TABLE_WIDTH + 24;
-      const requiredBottom = nextPos.y + baseTableHeight + 20;
-
+      // Just assign the groupId and position; subscriber handles group resize
       return {
         tables: s.tables.map((t) =>
           t.id === tableId ? { ...t, groupId, position: nextPos } : t
-        ),
-        groups: s.groups.map((g) =>
-          g.id === groupId
-            ? {
-                ...g,
-                width: Math.max(g.width, requiredRight - g.position.x),
-                height: Math.max(g.height, requiredBottom - g.position.y),
-              }
-            : g
         ),
       };
     }),
@@ -205,7 +246,6 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
     const id = uid();
     const colId = uid();
     
-    // Generate a unique table name
     let nameIndex = 1;
     let newName = 'new_table';
     while (state.tables.some(t => t.name === newName)) {
@@ -214,33 +254,19 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
     }
 
     const baseTableHeight = TABLE_HEADER_HEIGHT + COLUMN_ROW_HEIGHT + 32;
-    const padX = 24;
-    const padTop = 44;
-    const padBottom = 20;
     const gapX = 22;
     const gapY = 26;
-
-    const tablesInGroup = state.tables.filter((t) => {
-      const inside =
-        t.position.x >= group.position.x &&
-        t.position.y >= group.position.y &&
-        t.position.x <= group.position.x + group.width &&
-        t.position.y <= group.position.y + group.height;
-      return t.groupId === groupId || inside;
-    });
-
-    const usableWidth = Math.max(0, group.width - padX * 2);
+    const perRow = 2;
     const colWidth = DEFAULT_TABLE_WIDTH + gapX;
-    
-    // Allow up to 3 tables side-by-side before wrapping, expanding group width as needed
-    const perRow = 3;
+
+    const tablesInGroup = getTablesForGroup(state.tables, groupId);
     const idx = tablesInGroup.length;
     const col = idx % perRow;
     const row = Math.floor(idx / perRow);
 
     const position = {
-      x: group.position.x + padX + col * colWidth,
-      y: group.position.y + padTop + row * (baseTableHeight + gapY),
+      x: group.position.x + GROUP_PAD_LEFT + col * colWidth,
+      y: group.position.y + GROUP_PAD_TOP + row * (baseTableHeight + gapY),
     };
 
     const table: TableNode = {
@@ -262,20 +288,9 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
       groupId,
     };
 
-    const requiredRight = position.x + DEFAULT_TABLE_WIDTH + padX;
-    const requiredBottom = position.y + baseTableHeight + padBottom;
-
+    // Just add the table; the subscriber will auto-resize the group
     set((s) => ({
       tables: [...s.tables, table],
-      groups: s.groups.map((g) =>
-        g.id === groupId
-          ? {
-              ...g,
-              width: Math.max(g.width, requiredRight - g.position.x),
-              height: Math.max(g.height, requiredBottom - g.position.y),
-            }
-          : g
-      ),
       editingTableId: id,
     }));
     return id;
@@ -289,22 +304,13 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
 
   removeGroupAndTables: (id) =>
     set((s) => {
-      const group = s.groups.find((g) => g.id === id);
-      if (!group) return s;
-
-      const insideTables = s.tables.filter(t => 
-        t.position.x >= group.position.x &&
-        t.position.y >= group.position.y &&
-        t.position.x <= group.position.x + group.width &&
-        t.position.y <= group.position.y + group.height
-      );
-      const insideTableIds = new Set(insideTables.map((t) => t.id));
+      const tableIdsToRemove = new Set(s.tables.filter(t => t.groupId === id).map(t => t.id));
 
       return {
         groups: s.groups.filter((g) => g.id !== id),
-        tables: s.tables.filter((t) => !insideTableIds.has(t.id)),
+        tables: s.tables.filter((t) => !tableIdsToRemove.has(t.id)),
         relationships: s.relationships.filter(
-          (r) => !insideTableIds.has(r.sourceTableId) && !insideTableIds.has(r.targetTableId)
+          (r) => !tableIdsToRemove.has(r.sourceTableId) && !tableIdsToRemove.has(r.targetTableId)
         ),
       };
     }),
@@ -321,24 +327,10 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
 
   moveGroup: (id, position, delta) =>
     set((s) => {
-      // Find tables that intersect with this group's bounding box BEFORE moving, 
-      // or optionally move any tables strictly inside.
-      // Easiest semantic approach for "Spatial Groups": move explicit children, OR move overlapping tables.
-      // Usually users just assign by overlapping. We will move any table whose top-left is currently inside the group's old bounds.
-      const group = s.groups.find(g => g.id === id);
-      if (!group) return s;
-
-      const insideTables = s.tables.filter(t => 
-        t.position.x >= group.position.x &&
-        t.position.y >= group.position.y &&
-        t.position.x <= group.position.x + group.width &&
-        t.position.y <= group.position.y + group.height
-      );
-
       return {
         groups: s.groups.map((g) => (g.id === id ? { ...g, position } : g)),
         tables: s.tables.map((t) => 
-          insideTables.includes(t) 
+          t.groupId === id
             ? { ...t, position: { x: t.position.x + delta.x, y: t.position.y + delta.y } }
             : t
         ),
@@ -356,40 +348,24 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
       let nextWidth = size.width;
       let nextHeight = size.height;
 
-      const tableHeight = (t: TableNode) => TABLE_HEADER_HEIGHT + t.columns.length * COLUMN_ROW_HEIGHT + 32;
-      const tablesInside = s.tables.filter((t) =>
-        t.position.x >= group.position.x &&
-        t.position.y >= group.position.y &&
-        t.position.x <= group.position.x + group.width &&
-        t.position.y <= group.position.y + group.height
-      );
+      const tablesInside = getTablesForGroup(s.tables, id);
 
       if (tablesInside.length > 0) {
         const minTableX = Math.min(...tablesInside.map((t) => t.position.x));
         const minTableY = Math.min(...tablesInside.map((t) => t.position.y));
         const maxTableX = Math.max(...tablesInside.map((t) => t.position.x + t.width));
-        const maxTableY = Math.max(...tablesInside.map((t) => t.position.y + tableHeight(t)));
+        const maxTableY = Math.max(...tablesInside.map((t) => t.position.y + getTableHeight(t)));
 
-        const padLeft = 24;
-        const padTop = 44;
-        const padRight = 24;
-        const padBottom = 24;
+        const mustLeft = minTableX - GROUP_PAD_LEFT;
+        const mustTop = minTableY - GROUP_PAD_TOP;
+        const mustRight = maxTableX + GROUP_PAD_RIGHT;
+        const mustBottom = maxTableY + GROUP_PAD_BOTTOM;
 
-        const mustLeft = minTableX - padLeft;
-        const mustTop = minTableY - padTop;
-        const mustRight = maxTableX + padRight;
-        const mustBottom = maxTableY + padBottom;
-
-        // Prevent dragging the left/top edges past the tables
         nextX = Math.min(nextX, mustLeft);
         nextY = Math.min(nextY, mustTop);
         
-        // Prevent reducing width/height below what's needed to contain the tables
-        const minRequiredWidth = mustRight - nextX;
-        const minRequiredHeight = mustBottom - nextY;
-        
-        nextWidth = Math.max(nextWidth, minRequiredWidth);
-        nextHeight = Math.max(nextHeight, minRequiredHeight);
+        nextWidth = Math.max(nextWidth, mustRight - nextX);
+        nextHeight = Math.max(nextHeight, mustBottom - nextY);
       }
 
       return {
@@ -507,7 +483,6 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
     import('@/utils/sqlParser').then(({ parseSql }) => {
       const { tables: parsedTables, relationships: parsedRelationships } = parseSql(sql);
       set((state) => {
-        // Merge with existing or replace depending on preference, here we add them on
         const updatedRelationships = [...state.relationships];
         
         parsedRelationships.forEach(rel => {
@@ -522,3 +497,76 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
     });
   },
 }));
+
+// Auto-resize groups whenever tables change, then fix overlaps
+const GROUP_REFLOW_GAP = 50;
+
+function reflowOverlappingGroups(groups: GroupNode[]): GroupNode[] {
+  if (groups.length <= 1) return groups;
+
+  // Sort groups by x position for left-to-right reflow
+  const sorted = [...groups].sort((a, b) => a.position.x - b.position.x);
+  const result = sorted.map(g => ({ ...g }));
+  let changed = false;
+
+  for (let i = 1; i < result.length; i++) {
+    const prev = result[i - 1];
+    const prevRight = prev.position.x + prev.width + GROUP_REFLOW_GAP;
+    if (result[i].position.x < prevRight) {
+      result[i] = { ...result[i], position: { x: prevRight, y: result[i].position.y } };
+      changed = true;
+    }
+  }
+
+  if (!changed) return groups;
+  
+  // Map back to original order
+  const idMap = new Map(result.map(g => [g.id, g]));
+  return groups.map(g => idMap.get(g.id) || g);
+}
+
+let _prevTables: TableNode[] = [];
+let _isAutoResizing = false;
+useSchemaStore.subscribe((state) => {
+  if (_isAutoResizing) return;
+  if (state.tables === _prevTables) return;
+  _prevTables = state.tables;
+
+  _isAutoResizing = true;
+
+  let groups = autoResizeAllGroups(state.tables, state.groups);
+  const reflowed = reflowOverlappingGroups(groups);
+
+  // If groups were reflowed, also shift tables inside those groups
+  if (reflowed !== groups) {
+    let tables = state.tables;
+    let tablesChanged = false;
+    const groupsBefore = new Map(groups.map(g => [g.id, g]));
+    
+    for (const newG of reflowed) {
+      const original = groupsBefore.get(newG.id);
+      if (!original) continue;
+      const dx = newG.position.x - original.position.x;
+      const dy = newG.position.y - original.position.y;
+      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+        tablesChanged = true;
+        tables = tables.map(t =>
+          t.groupId === newG.id
+            ? { ...t, position: { x: t.position.x + dx, y: t.position.y + dy } }
+            : t
+        );
+      }
+    }
+
+    if (tablesChanged) {
+      _prevTables = tables;
+      useSchemaStore.setState({ groups: reflowed, tables });
+    } else {
+      useSchemaStore.setState({ groups: reflowed });
+    }
+  } else if (groups !== state.groups) {
+    useSchemaStore.setState({ groups });
+  }
+
+  _isAutoResizing = false;
+});

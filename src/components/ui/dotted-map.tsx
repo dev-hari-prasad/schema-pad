@@ -55,12 +55,12 @@ export function DottedMap<M extends Marker = Marker>({
   style,
   ...svgProps
 }: DottedMapProps<M>) {
-  const { points, addMarkers } = createMap({
+  const { points, addMarkers } = React.useMemo(() => createMap({
     width,
     height,
     mapSamples,
-  })
-  const processedMarkers = addMarkers(markers)
+  }), [width, height, mapSamples])
+  const processedMarkers = React.useMemo(() => addMarkers(markers), [addMarkers, markers])
 
   // Compute stagger helpers in a single, simple pass
   const { xStep, yToRowIndex } = React.useMemo(() => {
@@ -87,6 +87,16 @@ export function DottedMap<M extends Marker = Marker>({
     return { xStep: step || 1, yToRowIndex: rowMap }
   }, [points])
 
+  const dotsPath = React.useMemo(() => {
+    return points.map(point => {
+      const rowIndex = yToRowIndex.get(point.y) ?? 0
+      const offsetX = stagger && rowIndex % 2 === 1 ? xStep / 2 : 0
+      const cx = point.x + offsetX
+      const cy = point.y
+      return `M ${cx} ${cy} h 0`
+    }).join(' ')
+  }, [points, yToRowIndex, stagger, xStep])
+
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
@@ -94,19 +104,13 @@ export function DottedMap<M extends Marker = Marker>({
       style={{ width: "100%", height: "100%", ...style }}
       {...svgProps}
     >
-      {points.map((point, index) => {
-        const rowIndex = yToRowIndex.get(point.y) ?? 0
-        const offsetX = stagger && rowIndex % 2 === 1 ? xStep / 2 : 0
-        return (
-          <circle
-            cx={point.x + offsetX}
-            cy={point.y}
-            r={dotRadius}
-            fill={dotColor}
-            key={`${point.x}-${point.y}-${index}`}
-          />
-        )
-      })}
+      <path 
+        d={dotsPath} 
+        stroke={dotColor} 
+        strokeWidth={dotRadius * 2} 
+        strokeLinecap="round" 
+        fill="none" 
+      />
 
       {processedMarkers.map((marker, index) => {
         const rowIndex = yToRowIndex.get(marker.y) ?? 0

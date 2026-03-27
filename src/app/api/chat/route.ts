@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 
 export async function POST(req: NextRequest) {
+  console.log('Hit /api/chat route');
   try {
     const body = await req.json();
     const { baseUrl, apiKey, provider, model, messages, stream } = body;
@@ -22,15 +23,34 @@ export async function POST(req: NextRequest) {
       headers['X-Title'] = 'SQL Coder';
     }
 
-    const response = await fetch(`${baseUrl}/chat/completions`, {
+    let cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    // If the user accidentally included /chat/completions in the base URL, remove it
+    if (cleanBaseUrl.endsWith('/chat/completions')) {
+      cleanBaseUrl = cleanBaseUrl.slice(0, -17);
+    }
+    
+    const url = `${cleanBaseUrl}/chat/completions`;
+
+    const response = await fetch(`${url}`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
         model,
         messages,
         stream,
+        ...(body.tools ? { tools: body.tools } : {}),
       }),
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Upstream API error: ${response.status} ${errorText}`);
+      // Return 502 Bad Gateway so the client knows the upstream failed, not the local route
+      return new Response(JSON.stringify({ error: `Upstream API error: ${response.status} ${errorText}` }), {
+        status: 502,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
 
     // Return the response directly to stream it back to the client
     return new Response(response.body, {

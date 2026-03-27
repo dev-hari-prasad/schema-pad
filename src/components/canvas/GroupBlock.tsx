@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState, useEffect } from 'react';
 import { GroupNode, GroupColor } from '@/types/schema';
 import { useSchemaStore } from '@/store/schemaStore';
-import { Folder, DotsThree, Trash, PencilSimple, Palette, Plus } from '@phosphor-icons/react';
+import { Folder, DotsThree, Trash, PencilSimple, Palette, Plus, DotsSixVertical } from '@phosphor-icons/react';
 import { motion } from 'framer-motion';
 import {
   ContextMenu,
@@ -61,6 +61,11 @@ const COLOR_DOT_CLASS_MAP: Record<GroupColor, string> = {
   gray: 'bg-gray-200 dark:bg-slate-700',
 };
 
+function getGroupColors(color: unknown) {
+  const key = typeof color === 'string' ? (color as GroupColor) : undefined;
+  return (key && COLOR_MAP[key]) ? COLOR_MAP[key] : COLOR_MAP.blue;
+}
+
 export const GroupBlock: React.FC<Props> = ({ group }) => {
   const { moveGroup, updateGroupName, removeGroup, removeGroupAndTables, updateGroupColor, addTableToGroup } = useSchemaStore();
   
@@ -68,17 +73,19 @@ export const GroupBlock: React.FC<Props> = ({ group }) => {
   const [isResizing, setIsResizing] = useState(false);
   const [resizeDir, setResizeDir] = useState<string | null>(null);
   const [showMenu, setShowMenu] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
   
   const dragStart = useRef({ x: 0, y: 0, gx: 0, gy: 0 });
   const resizeStart = useRef({ x: 0, y: 0, gx: 0, gy: 0, gw: 0, gh: 0 });
   const nameInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const colors = COLOR_MAP[group.color];
+  const colors = getGroupColors(group.color);
 
   // Dragging logic
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('.group-controls')) return;
+    if ((e.target as HTMLElement).closest('.group-name')) return;
     
     e.stopPropagation();
     setIsDragging(true);
@@ -202,20 +209,54 @@ export const GroupBlock: React.FC<Props> = ({ group }) => {
     >
       {/* Header */}
       <div 
-        className={`h-8 flex items-center justify-between px-2 cursor-grab active:cursor-grabbing rounded-t-md opacity-90 backdrop-blur-sm ${colors.header} ${colors.text}`}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
+        className={`h-8 flex items-center justify-between px-2 rounded-t-md opacity-90 backdrop-blur-sm ${colors.header} ${colors.text}`}
       >
-        <div className="flex items-center gap-1.5 flex-1 select-none">
+        <div className="flex items-center gap-1.5 flex-1 min-w-0 select-none">
+          <button
+            type="button"
+            className="group-drag-handle p-0.5 -ml-1 rounded cursor-grab active:cursor-grabbing opacity-70 hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10"
+            title="Drag group"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+          >
+            <DotsSixVertical size={16} weight="bold" />
+          </button>
           <Folder size={15} weight="fill" className="opacity-80" />
-          <input
-            ref={nameInputRef}
-            value={group.name}
-            onChange={(e) => updateGroupName(group.id, e.target.value)}
-            className="bg-transparent border-none outline-none font-semibold text-xs tracking-wide w-full"
-            placeholder="Group Name"
-          />
+          <div className="group-name flex-1 min-w-0">
+            {isEditingName ? (
+              <input
+                ref={nameInputRef}
+                value={group.name}
+                onChange={(e) => updateGroupName(group.id, e.target.value)}
+                onBlur={() => setIsEditingName(false)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === 'Escape') {
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
+                className="bg-transparent border-none outline-none font-semibold text-xs tracking-wide w-full"
+                placeholder="Group Name"
+                autoFocus
+              />
+            ) : (
+              <button
+                type="button"
+                className="w-full text-left font-semibold text-xs tracking-wide truncate opacity-95 hover:opacity-100"
+                title="Rename group"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsEditingName(true);
+                  queueMicrotask(() => {
+                    nameInputRef.current?.focus();
+                    nameInputRef.current?.select();
+                  });
+                }}
+              >
+                {group.name || 'Group Name'}
+              </button>
+            )}
+          </div>
         </div>
         
         {/* Controls */}

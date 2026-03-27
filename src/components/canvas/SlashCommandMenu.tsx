@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Table, Code, Robot, Folder, Sun, Moon, CheckCircle, TextAa, GridFour, ShareNetwork, MagnifyingGlassPlus, MagnifyingGlassMinus, Bug } from '@phosphor-icons/react';
+import { Table, Code, Robot, Folder, Sun, Moon, CheckCircle, TextAa, GridFour, ShareNetwork, MagnifyingGlassPlus, MagnifyingGlassMinus, Bug, CornersOut, Trash, Minus } from '@phosphor-icons/react';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { useSchemaStore } from '@/store/schemaStore';
 
@@ -24,6 +24,9 @@ export const SlashCommandMenu: React.FC<Props> = ({ position, onSelect, onAskAI,
     { id: 'table', label: 'Add Table', icon: Table },
     { id: 'group', label: 'Create Group', icon: Folder },
     { id: 'sql', label: 'View SQL', icon: Code },
+    { id: 'chat-expand', label: 'Expand Chat', icon: CornersOut },
+    { id: 'chat-minimize', label: 'Minimize Chat', icon: Minus },
+    { id: 'chat-clear', label: 'Clear Chat', icon: Trash },
     { id: 'share', label: 'Share', icon: ShareNetwork },
     { id: 'issue', label: 'Report Issue', icon: Bug },
     { id: 'grid', label: 'Toggle Grid', icon: GridFour },
@@ -87,6 +90,9 @@ export const SlashCommandMenu: React.FC<Props> = ({ position, onSelect, onAskAI,
     if (id === 'zoom-in') { setZoom(zoom + 0.1); onClose(); return; }
     if (id === 'zoom-out') { setZoom(zoom - 0.1); onClose(); return; }
     if (id === 'issue') { window.open('https://github.com/munde/sql-coder/issues/new', '_blank'); onClose(); return; }
+    if (id === 'chat-expand') { window.dispatchEvent(new CustomEvent('schema:open-ai-chat')); onClose(); return; }
+    if (id === 'chat-minimize') { window.dispatchEvent(new CustomEvent('schema:minimize-ai-chat')); onClose(); return; }
+    if (id === 'chat-clear') { window.dispatchEvent(new CustomEvent('schema:clear-ai-chat')); onClose(); return; }
     onSelect(id);
   };
 

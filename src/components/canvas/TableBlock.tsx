@@ -5,7 +5,7 @@ import { useSchemaStore } from '@/store/schemaStore';
 import type { TableNode, Column, ColumnType } from '@/types/schema';
 import { COLUMN_TYPES, COLUMN_ROW_HEIGHT, TABLE_HEADER_HEIGHT } from '@/types/schema';
 import {
-  Key, LinkSimple, HashStraight, Plus, Trash, CopySimple, CaretDown, PencilSimple, Folders, Check,
+  Key, LinkSimple, HashStraight, Plus, Trash, CopySimple, CaretDown, PencilSimple, Folders, Check, DotsSixVertical,
 } from '@phosphor-icons/react';
 import { motion } from 'framer-motion';
 import {
@@ -77,6 +77,10 @@ export const TableBlock: React.FC<TableBlockProps> = ({ table }) => {
       } else {
         if (!isSelected) setSelectedIds([table.id]);
       }
+      const el = e.target as HTMLElement;
+      const isHandle = !!el.closest('.table-drag-handle');
+      if (!isHandle) return;
+
       setDragging(true);
       setDragOffset({
         x: e.clientX / useSchemaStore.getState().zoom - table.position.x,
@@ -97,6 +101,36 @@ export const TableBlock: React.FC<TableBlockProps> = ({ table }) => {
     };
     const handleUp = () => {
       setDragging(false);
+      
+      // Auto-detect group membership after drag
+      const state = useSchemaStore.getState();
+      const t = state.tables.find(tbl => tbl.id === table.id);
+      if (!t) return;
+      
+      const centerX = t.position.x + t.width / 2;
+      const centerY = t.position.y + 20;
+      
+      // Find which group this table's center falls into
+      let targetGroupId: string | null = null;
+      for (const g of state.groups) {
+        if (
+          centerX >= g.position.x && centerX <= g.position.x + g.width &&
+          centerY >= g.position.y && centerY <= g.position.y + g.height
+        ) {
+          targetGroupId = g.id;
+          break;
+        }
+      }
+      
+      const currentGroupId = t.groupId || null;
+      if (targetGroupId !== currentGroupId) {
+        // Just update groupId, keep position where user dropped it
+        useSchemaStore.setState((s) => ({
+          tables: s.tables.map(tbl => 
+            tbl.id === table.id ? { ...tbl, groupId: targetGroupId || undefined } : tbl
+          ),
+        }));
+      }
     };
     window.addEventListener('mousemove', handleMove);
     window.addEventListener('mouseup', handleUp);
@@ -174,41 +208,52 @@ export const TableBlock: React.FC<TableBlockProps> = ({ table }) => {
       }}
     >
       <div
-        className="flex items-center justify-between pl-3.5 pr-4 bg-table-header"
+        className="flex items-center justify-between pl-2.5 pr-4 bg-table-header"
         style={{ height: TABLE_HEADER_HEIGHT }}
       >
-        {isEditing ? (
-          <TooltipProvider delayDuration={0}>
-            <Tooltip open={isDuplicateTableName}>
-              <TooltipTrigger asChild>
-                <input
-                  ref={nameInputRef}
-                  className={`bg-transparent text-[15px] font-semibold outline-none w-full ${isDuplicateTableName ? 'text-destructive' : 'text-foreground'}`}
-                  value={table.name}
-                  onChange={(e) => updateTableName(table.id, e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(e)}
-                  onBlur={() => setEditingTableId(null)}
-                />
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-xs bg-destructive text-destructive-foreground border-0 px-2 py-1 font-medium shadow-lg">
-                <p>Table name already exists</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        ) : (
-          <TooltipProvider delayDuration={0}>
-            <Tooltip open={isDuplicateTableName}>
-              <TooltipTrigger asChild>
-                <span className={`text-[15px] font-semibold truncate ${isDuplicateTableName ? 'text-destructive' : 'text-foreground'}`}>
-                  {table.name}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-xs bg-destructive text-destructive-foreground border-0 px-2 py-1 font-medium shadow-lg">
-                <p>Table name already exists</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
+        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+          <button
+            type="button"
+            className="table-drag-handle p-0.5 -ml-0.5 rounded cursor-grab active:cursor-grabbing opacity-70 hover:opacity-100 hover:bg-secondary/60"
+            title="Drag table"
+          >
+            <DotsSixVertical size={16} weight="bold" />
+          </button>
+          <div className="flex-1 min-w-0">
+            {isEditing ? (
+              <TooltipProvider delayDuration={0}>
+                <Tooltip open={isDuplicateTableName}>
+                  <TooltipTrigger asChild>
+                    <input
+                      ref={nameInputRef}
+                      className={`bg-transparent text-[15px] font-semibold outline-none w-full ${isDuplicateTableName ? 'text-destructive' : 'text-foreground'}`}
+                      value={table.name}
+                      onChange={(e) => updateTableName(table.id, e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(e)}
+                      onBlur={() => setEditingTableId(null)}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs bg-destructive text-destructive-foreground border-0 px-2 py-1 font-medium shadow-lg">
+                    <p>Table name already exists</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+              <TooltipProvider delayDuration={0}>
+                <Tooltip open={isDuplicateTableName}>
+                  <TooltipTrigger asChild>
+                    <span className={`text-[15px] font-semibold truncate block ${isDuplicateTableName ? 'text-destructive' : 'text-foreground'}`}>
+                      {table.name}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs bg-destructive text-destructive-foreground border-0 px-2 py-1 font-medium shadow-lg">
+                    <p>Table name already exists</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+        </div>
         <div className="flex items-center gap-1 ml-2">
           <TooltipProvider delayDuration={200}>
             <Tooltip>

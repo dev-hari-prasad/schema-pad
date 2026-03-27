@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PaperPlaneRight } from '@phosphor-icons/react';
+import { CornersOut, PaperPlaneRight, Stop } from '@phosphor-icons/react';
 import { AIChatPanel } from '@/components/canvas/AIChatPanel';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const SUGGESTIONS = [
   "Help me enhance my schema",
@@ -13,6 +14,8 @@ const SUGGESTIONS = [
 
 export const BottomChatInput = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [clearTick, setClearTick] = useState(0);
   const [suggestionIdx, setSuggestionIdx] = useState(0);
   const [value, setValue] = useState("");
   const [chatMessage, setChatMessage] = useState<{ text: string; tick: number } | undefined>(undefined);
@@ -37,11 +40,34 @@ export const BottomChatInput = () => {
     return () => window.removeEventListener('schema:ask-ai-from-command', handleAskAI as EventListener);
   }, []);
 
+  useEffect(() => {
+    const handleOpen = () => {
+      setIsOpen(true);
+      setIsMinimized(false);
+    };
+    const handleMinimize = () => {
+      setIsMinimized(true);
+      setIsOpen(false);
+    };
+    const handleClear = () => {
+      setClearTick(Date.now());
+    };
+    window.addEventListener('schema:open-ai-chat', handleOpen as EventListener);
+    window.addEventListener('schema:minimize-ai-chat', handleMinimize as EventListener);
+    window.addEventListener('schema:clear-ai-chat', handleClear as EventListener);
+    return () => {
+      window.removeEventListener('schema:open-ai-chat', handleOpen as EventListener);
+      window.removeEventListener('schema:minimize-ai-chat', handleMinimize as EventListener);
+      window.removeEventListener('schema:clear-ai-chat', handleClear as EventListener);
+    };
+  }, []);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (value.trim() && !isAILoading) {
       setChatMessage({ text: value.trim(), tick: Date.now() });
       setIsOpen(true);
+      setIsMinimized(false);
       setValue("");
     }
   };
@@ -50,33 +76,44 @@ export const BottomChatInput = () => {
 
   return (
     <div ref={containerRef} className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center">
-      <AnimatePresence mode="wait">
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0, y: 10 }}
-            animate={{ opacity: 1, height: 480, y: 0 }}
-            exit={{ opacity: 0, height: 0, y: 10 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }}
-            className="origin-bottom flex justify-center"
-          >
-            <div className={`relative ${widthClass} h-full rounded-t-2xl overflow-hidden shadow-2xl border-t border-x border-floating-border bg-floating-bg transition-all duration-300`}>
-              <AIChatPanel 
-                onClose={() => { setIsOpen(false); setChatMessage(undefined); }} 
-                isEmbedded={true} 
-                newMessage={chatMessage}
-                onLoadingChange={setIsAILoading}
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <motion.div
+        initial={false}
+        animate={{
+          opacity: isOpen ? 1 : 0,
+          y: isOpen ? 0 : 24,
+          scaleY: isOpen ? 1 : 0.85,
+          height: isOpen ? 480 : 0,
+        }}
+        transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.9 }}
+        className="origin-bottom flex justify-center overflow-hidden"
+        style={{ pointerEvents: isOpen ? 'auto' : 'none' }}
+      >
+        <div className={`relative ${widthClass} h-full rounded-t-2xl overflow-hidden shadow-2xl border-t border-x border-floating-border bg-floating-bg transition-all duration-300`}>
+          <AIChatPanel
+            onClose={() => {
+              setIsOpen(false);
+              setIsMinimized(false);
+              setChatMessage(undefined);
+            }}
+            onMinimize={() => {
+              setIsMinimized(true);
+              setIsOpen(false);
+            }}
+            isEmbedded={true}
+            newMessage={chatMessage}
+            clearTick={clearTick}
+            onLoadingChange={setIsAILoading}
+          />
+        </div>
+      </motion.div>
 
       <motion.form 
         onSubmit={handleSubmit}
-        className={`flex items-center ${widthClass} h-11 bg-floating-bg border-floating-border shadow-lg px-2.5 transition-all duration-300 ${isOpen ? 'border-b border-x rounded-b-2xl' : 'border rounded-full focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary'}`}
-        initial={{ y: 20, opacity: 0 }}
+        className={`flex items-center ${widthClass} h-11 bg-floating-bg border-floating-border shadow-lg px-2.5 transition-all duration-300 ${isOpen ? 'border-t border-b border-x rounded-b-2xl' : 'border rounded-full focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary'}`}
+        initial={{ y: 18, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.1, type: 'spring' }}
+        transition={{ delay: 0.05, duration: 0.28, ease: 'easeOut' }}
+        style={{ willChange: 'transform, opacity' }}
       >
         <div className="text-muted-foreground mr-3 shrink-0">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1172.25 1172.249948" className="w-5 h-5 fill-current">
@@ -98,13 +135,59 @@ export const BottomChatInput = () => {
             </div>
           )}
         </div>
-        <button
-          className={`w-5 h-5 flex items-center justify-center rounded-full transition-colors bg-primary text-primary-foreground focus:outline-none hover:bg-primary/90 ${(!value.trim() && !isOpen) || isAILoading ? 'opacity-50 cursor-not-allowed' : 'opacity-100'}`}
-          type="submit"
-          disabled={isAILoading || !value.trim()}
-        >
-          <PaperPlaneRight size={12} weight="fill" className="-rotate-90" />
-        </button>
+        <TooltipProvider delayDuration={200}>
+          {isAILoading && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="mr-1 w-6 h-6 flex items-center justify-center rounded-full transition-colors bg-secondary text-foreground hover:bg-secondary/80 border border-border"
+                  onClick={() => window.dispatchEvent(new CustomEvent('schema:stop-ai-chat'))}
+                >
+                  <Stop size={14} weight="fill" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs bg-black text-white border-0 px-2 py-1 font-medium shadow-lg">
+                <p>Stop</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+
+          {isMinimized && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="mr-1 w-6 h-6 flex items-center justify-center rounded-full transition-colors bg-secondary text-foreground hover:bg-secondary/80 border border-border"
+                  onClick={() => {
+                    setIsOpen(true);
+                    setIsMinimized(false);
+                  }}
+                >
+                  <CornersOut size={14} weight="bold" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs bg-black text-white border-0 px-2 py-1 font-medium shadow-lg">
+                <p>Expand chat</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                className={`w-6 h-6 flex items-center justify-center rounded-full transition-colors bg-primary text-primary-foreground focus:outline-none hover:bg-primary/90 ${(!value.trim() && !isOpen) || isAILoading ? 'opacity-50 cursor-not-allowed' : 'opacity-100'}`}
+                type="submit"
+                disabled={isAILoading || !value.trim()}
+              >
+                <PaperPlaneRight size={14} weight="fill" className="-rotate-90" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs bg-black text-white border-0 px-2 py-1 font-medium shadow-lg">
+              <p>Send message</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </motion.form>
     </div>
   );

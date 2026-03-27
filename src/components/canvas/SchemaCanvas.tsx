@@ -392,7 +392,7 @@ const SchemaCanvas: React.FC = () => {
               </div>
               <div className="flex items-center gap-2.5 text-sm px-1">
                 <div className="w-5 flex justify-center text-muted-foreground"><Bug size={16} /></div>
-                <span><kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs mx-1 border border-border">Ctrl</kbd> + <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs mr-1 border border-border">G</kbd> to report issue</span>
+                <span>Report issue: <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs mx-1 border border-border">Ctrl</kbd> + <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs mr-1 border border-border">G</kbd></span>
               </div>
             </div>
           </div>

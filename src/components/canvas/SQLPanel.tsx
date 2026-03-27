@@ -7,6 +7,8 @@ import { X, Copy, Download, CheckCircle, Code } from '@phosphor-icons/react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import hljs from 'highlight.js/lib/common';
+import 'highlight.js/styles/github-dark.css';
 
 const SVGLIcon = ({ name, fallback }: { name: string; fallback?: React.ReactNode }) => {
   if (name === 'mysql') {
@@ -15,7 +17,13 @@ const SVGLIcon = ({ name, fallback }: { name: string; fallback?: React.ReactNode
   if (name === 'drizzle') {
     return <svg fill="none" viewBox="0 0 160 160" className="w-4 h-4 bg-[#c5f74f] rounded-sm p-[1px]"><rect width="9.631" height="40.852" fill="#121212" rx="4.816" transform="matrix(.87303 .48767 -.49721 .86763 43.48 67.304)"/><rect width="9.631" height="40.852" fill="#121212" rx="4.816" transform="matrix(.87303 .48767 -.49721 .86763 76.94 46.534)"/><rect width="9.631" height="40.852" fill="#121212" rx="4.816" transform="matrix(.87303 .48767 -.49721 .86763 128.424 46.535)"/><rect width="9.631" height="40.852" fill="#121212" rx="4.816" transform="matrix(.87303 .48767 -.49721 .86763 94.957 67.304)"/></svg>;
   }
-  return <img src={`https://svgl.app/library/${name}.svg`} alt={name} className="w-4 h-4 rounded-sm" />;
+  return (
+    <img
+      src={`https://svgl.app/library/${name}.svg`}
+      alt={name}
+      className={`w-4 h-4 rounded-sm ${name === 'prisma' ? 'dark:invert dark:brightness-200' : ''}`}
+    />
+  );
 };
 
 interface Props {
@@ -35,6 +43,28 @@ export const SQLPanel: React.FC<Props> = ({ onClose }) => {
     [tables, relationships, computedFormat]
   );
 
+  const highlightLang = useMemo(() => {
+    if (computedFormat === 'drizzle') return 'typescript';
+    if (computedFormat === 'json') return 'json';
+    if (computedFormat === 'prisma') return 'prisma';
+    return 'sql';
+  }, [computedFormat]);
+
+  const highlightedHtml = useMemo(() => {
+    try {
+      return hljs.highlight(output, { language: highlightLang }).value;
+    } catch {
+      try {
+        return hljs.highlightAuto(output, ['sql', 'typescript', 'json']).value;
+      } catch {
+        return output
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;');
+      }
+    }
+  }, [output, highlightLang]);
+
   const handleCopy = async () => {
     await navigator.clipboard.writeText(output);
     setCopied(true);
@@ -53,45 +83,58 @@ export const SQLPanel: React.FC<Props> = ({ onClose }) => {
   };
 
   return (
-    <div className="absolute right-3 top-3 bottom-3 w-96 rounded-lg border border-floating-border bg-floating-bg shadow-2xl flex flex-col animate-fade-in z-30">
-      <TooltipProvider delayDuration={200}>
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="absolute right-3 top-3 bottom-3 w-[440px] rounded-lg border border-floating-border bg-floating-bg shadow-2xl flex flex-col animate-fade-in">
+        <TooltipProvider delayDuration={200}>
       <div className="flex flex-col border-b border-border">
         {/* Top Header Row with Tabs and Actions */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-border/50">
           <Tabs value={dialect} onValueChange={(val) => setDialect(val as any)} className="h-8">
             <TabsList className="h-8 p-1">
-              <TabsTrigger value="postgres" className="text-xs px-3 h-6">PgSQL</TabsTrigger>
-              <TabsTrigger value="mysql" className="text-xs px-3 h-6">MySQL</TabsTrigger>
+              <TabsTrigger value="postgres" className="text-xs px-3 h-6 gap-2">
+                <SVGLIcon name="postgresql" fallback={<Code size={14} />} />
+                PgSQL
+              </TabsTrigger>
+              <TabsTrigger value="mysql" className="text-xs px-3 h-6 gap-2">
+                <SVGLIcon name="mysql" fallback={<Code size={14} />} />
+                MySQL
+              </TabsTrigger>
             </TabsList>
           </Tabs>
           
-          <div className="flex items-center gap-0.5">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                  onClick={handleCopy}
-                >
-                  {copied ? <CheckCircle size={16} className="text-primary" /> : <Copy size={16} />}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs bg-black text-white border-0 px-2 py-1 font-medium select-none shadow-lg">
-                <p>{copied ? 'Copied' : 'Copy'}</p>
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                  onClick={handleDownload}
-                >
-                  <Download size={16} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs bg-black text-white border-0 px-2 py-1 font-medium select-none shadow-lg">
-                <p>Download</p>
-              </TooltipContent>
-            </Tooltip>
+          <div className="flex items-center gap-2">
+            <Select value={orm} onValueChange={(val: any) => setOrm(val)}>
+              <SelectTrigger className="w-[150px] h-7 text-xs border-border bg-background focus:ring-1">
+                <SelectValue placeholder="Format" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="raw">
+                  <div className="flex items-center gap-2">
+                    {dialect === 'postgres' ? <SVGLIcon name="postgresql" fallback={<Code size={14} />} /> : <SVGLIcon name="mysql" fallback={<Code size={14} />} />}
+                    <span>Raw SQL</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="drizzle">
+                  <div className="flex items-center gap-2">
+                    <SVGLIcon name="drizzle" fallback={<Code size={14} />} />
+                    <span>Drizzle ORM</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="prisma">
+                  <div className="flex items-center gap-2">
+                    <SVGLIcon name="prisma" fallback={<Code size={14} />} />
+                    <span>Prisma ORM</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="json">
+                  <div className="flex items-center gap-2">
+                    <Code size={14} />
+                    <span>JSON</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
             <button
               className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors ml-1"
               onClick={onClose}
@@ -100,49 +143,51 @@ export const SQLPanel: React.FC<Props> = ({ onClose }) => {
             </button>
           </div>
         </div>
-
-        {/* Secondary Header Row with Format Selector */}
-        <div className="flex items-center justify-between px-3 py-2 bg-secondary/20">
-          <span className="text-xs font-medium text-muted-foreground">Framework</span>
-          <Select value={orm} onValueChange={(val: any) => setOrm(val)}>
-            <SelectTrigger className="w-[140px] h-7 text-xs border-border bg-background focus:ring-1">
-              <SelectValue placeholder="Format" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="raw">
-                <div className="flex items-center gap-2">
-                  {dialect === 'postgres' ? <SVGLIcon name="postgresql" fallback={<Code size={14} />} /> : <SVGLIcon name="mysql" fallback={<Code size={14} />} />}
-                  <span>Raw SQL</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="drizzle">
-                <div className="flex items-center gap-2">
-                  <SVGLIcon name="drizzle" fallback={<Code size={14} />} />
-                  <span>Drizzle ORM</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="prisma">
-                <div className="flex items-center gap-2">
-                  <SVGLIcon name="prisma" fallback={<Code size={14} />} />
-                  <span>Prisma ORM</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="json">
-                <div className="flex items-center gap-2">
-                  <Code size={14} />
-                  <span>JSON Struct</span>
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
       </div>
 
       {/* Code */}
-      <pre className="flex-1 overflow-auto p-4 text-xs text-foreground font-mono leading-relaxed whitespace-pre-wrap">
-        {output}
-      </pre>
-      </TooltipProvider>
+      <div className="flex-1 overflow-auto p-4">
+        <div className="relative rounded-xl border border-border/60 bg-black/5 dark:bg-white/5 overflow-hidden">
+          <div className="absolute top-0 right-0 z-10">
+            <div className="flex items-center gap-0.5 p-1 rounded-lg rounded-bl-2xl border border-border/60 bg-floating-bg/70 backdrop-blur-md shadow-sm">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
+                    onClick={handleCopy}
+                  >
+                    {copied ? <CheckCircle size={16} className="text-primary" /> : <Copy size={16} />}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs bg-black text-white border-0 px-2 py-1 font-medium select-none shadow-lg">
+                  <p>{copied ? 'Copied' : 'Copy'}</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
+                    onClick={handleDownload}
+                  >
+                    <Download size={16} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs bg-black text-white border-0 px-2 py-1 font-medium select-none shadow-lg">
+                  <p>Download</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
+          <pre className="m-0 p-3 text-xs text-foreground font-mono leading-relaxed whitespace-pre rounded-xl">
+            <code
+              className={`hljs language-${highlightLang} !bg-transparent`}
+              dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+            />
+          </pre>
+        </div>
+      </div>
+        </TooltipProvider>
+      </div>
     </div>
   );
 };
