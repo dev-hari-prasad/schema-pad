@@ -6,9 +6,14 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 export const metadata: Metadata = {
-  title: "SQL Coder – Visual Database Schema Designer",
+  title: "Schema Pad – Visual database schema designer",
   description:
-    "Design your database schema visually, generate SQL, and get AI-powered assistance.",
+    "Schema Pad: design database schemas on a canvas, export SQL, and use AI with full schema context.",
+  icons: {
+    icon: "/Icon.png",
+    shortcut: "/Icon.png",
+    apple: "/Icon.png",
+  },
 };
 
 export default function RootLayout({

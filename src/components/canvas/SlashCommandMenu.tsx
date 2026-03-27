@@ -89,7 +89,7 @@ export const SlashCommandMenu: React.FC<Props> = ({ position, onSelect, onAskAI,
     if (id === 'grid') { toggleGrid(); onClose(); return; }
     if (id === 'zoom-in') { setZoom(zoom + 0.1); onClose(); return; }
     if (id === 'zoom-out') { setZoom(zoom - 0.1); onClose(); return; }
-    if (id === 'issue') { window.open('https://github.com/munde/sql-coder/issues/new', '_blank'); onClose(); return; }
+    if (id === 'issue') { window.open('https://github.com/dev-hari-prasad/schema-pad/issues/new', '_blank'); onClose(); return; }
     if (id === 'chat-expand') { window.dispatchEvent(new CustomEvent('schema:open-ai-chat')); onClose(); return; }
     if (id === 'chat-minimize') { window.dispatchEvent(new CustomEvent('schema:minimize-ai-chat')); onClose(); return; }
     if (id === 'chat-clear') { window.dispatchEvent(new CustomEvent('schema:clear-ai-chat')); onClose(); return; }

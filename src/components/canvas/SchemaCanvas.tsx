@@ -2,6 +2,7 @@
 
 import React, { useCallback, useRef, useState, useEffect } from 'react';
 import { useSchemaStore } from '@/store/schemaStore';
+import { usePreferencesStore } from '@/store/preferencesStore';
 import { TableBlock } from '@/components/canvas/TableBlock';
 import { GroupBlock } from '@/components/canvas/GroupBlock';
 import { RelationshipLines } from '@/components/canvas/RelationshipLines';
@@ -29,10 +30,46 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 
+const CanvasZoomControls: React.FC<{
+  zoom: number;
+  setZoom: (z: number) => void;
+}> = ({ zoom, setZoom }) => (
+  <div className="flex items-center gap-1 h-10 px-2 rounded-full bg-floating-bg border border-floating-border shadow-sm">
+    <motion.button
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      className="p-1.5 rounded-full transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary"
+      onClick={() => setZoom(zoom - 0.1)}
+      title="Zoom out"
+    >
+      <MagnifyingGlassMinus size={18} />
+    </motion.button>
+    <motion.button
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      className="text-[13px] text-muted-foreground hover:text-foreground font-medium w-10 text-center select-none transition-colors"
+      onClick={() => setZoom(1)}
+      title="Reset zoom"
+    >
+      {Math.round(zoom * 100)}%
+    </motion.button>
+    <motion.button
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      className="p-1.5 rounded-full transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary"
+      onClick={() => setZoom(zoom + 0.1)}
+      title="Zoom in"
+    >
+      <MagnifyingGlassPlus size={18} />
+    </motion.button>
+  </div>
+);
+
 const SchemaCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const { tables, groups, relationships, pan, zoom, showGrid, selectedIds, connectingFrom } = useSchemaStore();
   const { setPan, setZoom, addTable, addGroup, setSelectedIds, setEditingTableId, setEditingColumnId, setConnectingFrom } = useSchemaStore();
+  const chatDockPosition = usePreferencesStore((s) => s.chatDockPosition);
 
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
@@ -191,7 +228,7 @@ const SchemaCanvas: React.FC = () => {
       }
       if (e.key === 'g' && (e.ctrlKey || e.metaKey) && !isInput) {
         e.preventDefault();
-        window.open('https://github.com/munde/sql-coder/issues/new', '_blank');
+        window.open('https://github.com/dev-hari-prasad/schema-pad/issues/new', '_blank');
       }
     };
     window.addEventListener('keydown', handler);
@@ -367,68 +404,48 @@ const SchemaCanvas: React.FC = () => {
         <span>{tables.length} table{tables.length !== 1 ? 's' : ''}</span>
       </div>
 
-      {/* Bottom Right Workspace Controls */}
-      <div className="absolute bottom-3 right-3 flex items-center gap-2 z-10">
-        {/* Help Popover */}
-        <div className="group relative">
-          <button className="flex items-center justify-center w-8 h-8 rounded-full bg-floating-bg border border-floating-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shadow-sm focus:outline-none">
-            <Question size={15} weight="bold" />
-          </button>
-          
-          <div className="absolute bottom-full right-0 mb-2 w-60 p-3 rounded-lg bg-popover text-popover-foreground border border-border shadow-xl opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200">
-            <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-3 px-1">Shortcuts</h4>
-            <div className="flex flex-col gap-2.5">
-              <div className="flex items-center gap-2.5 text-sm px-1">
-                <div className="w-5 flex justify-center text-muted-foreground"><HandGrabbing size={16} /></div>
-                <span>Click and drag to pan</span>
-              </div>
-              <div className="flex items-center gap-2.5 text-sm px-1">
-                <div className="w-5 flex justify-center text-muted-foreground"><MagnifyingGlass size={16} /></div>
-                <span>Pinch to zoom</span>
-              </div>
-              <div className="flex items-center gap-2.5 text-sm px-1">
-                <div className="w-5 flex justify-center text-muted-foreground"><Keyboard size={16} /></div>
-                <span>Press <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs ml-1 border border-border">/</kbd> for commands</span>
-              </div>
-              <div className="flex items-center gap-2.5 text-sm px-1">
-                <div className="w-5 flex justify-center text-muted-foreground"><Bug size={16} /></div>
-                <span>Report issue: <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs mx-1 border border-border">Ctrl</kbd> + <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs mr-1 border border-border">G</kbd></span>
+      {/* Zoom at bottom center when chat is docked bottom-right */}
+      {chatDockPosition === 'bottom-right' && (
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 pointer-events-auto">
+          <CanvasZoomControls zoom={zoom} setZoom={setZoom} />
+        </div>
+      )}
+
+      {/* Bottom Right Workspace Controls (hide ? when chat is docked bottom-right) */}
+      {chatDockPosition !== 'bottom-right' && (
+        <div className="absolute bottom-3 right-3 flex items-center gap-2 z-10">
+          {/* Help Popover */}
+          <div className="group relative">
+            <button className="flex items-center justify-center w-8 h-8 rounded-full bg-floating-bg border border-floating-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shadow-sm focus:outline-none">
+              <Question size={15} weight="bold" />
+            </button>
+            
+            <div className="absolute bottom-full right-0 mb-2 w-60 p-3 rounded-lg bg-popover text-popover-foreground border border-border shadow-xl opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200">
+              <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-3 px-1">Shortcuts</h4>
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center gap-2.5 text-sm px-1">
+                  <div className="w-5 flex justify-center text-muted-foreground"><HandGrabbing size={16} /></div>
+                  <span>Click and drag to pan</span>
+                </div>
+                <div className="flex items-center gap-2.5 text-sm px-1">
+                  <div className="w-5 flex justify-center text-muted-foreground"><MagnifyingGlass size={16} /></div>
+                  <span>Pinch to zoom</span>
+                </div>
+                <div className="flex items-center gap-2.5 text-sm px-1">
+                  <div className="w-5 flex justify-center text-muted-foreground"><Keyboard size={16} /></div>
+                  <span>Press <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs ml-1 border border-border">/</kbd> for commands</span>
+                </div>
+                <div className="flex items-center gap-2.5 text-sm px-1">
+                  <div className="w-5 flex justify-center text-muted-foreground"><Bug size={16} /></div>
+                  <span>Report issue: <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs mx-1 border border-border">Ctrl</kbd> + <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs mr-1 border border-border">G</kbd></span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Zoom Controls */}
-        <div className="flex items-center gap-1 h-10 px-2 rounded-full bg-floating-bg border border-floating-border shadow-sm">
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="p-1.5 rounded-full transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary"
-            onClick={() => setZoom(zoom - 0.1)}
-            title="Zoom out"
-          >
-            <MagnifyingGlassMinus size={18} />
-          </motion.button>
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="text-[13px] text-muted-foreground hover:text-foreground font-medium w-10 text-center select-none transition-colors"
-            onClick={() => setZoom(1)}
-            title="Reset zoom"
-          >
-            {Math.round(zoom * 100)}%
-          </motion.button>
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="p-1.5 rounded-full transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary"
-            onClick={() => setZoom(zoom + 0.1)}
-            title="Zoom in"
-          >
-            <MagnifyingGlassPlus size={18} />
-          </motion.button>
+          {chatDockPosition === 'center' && <CanvasZoomControls zoom={zoom} setZoom={setZoom} />}
         </div>
-      </div>
+      )}
     </div>
   );
 };

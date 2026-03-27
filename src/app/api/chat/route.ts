@@ -1,12 +1,39 @@
 import { NextRequest } from 'next/server';
 
+/** OIDC / JWT-shaped tokens users sometimes paste into "API key" by mistake. AI Gateway prioritizes Bearer over OIDC even when invalid, which can cause DEPLOYMENT_NOT_FOUND. */
+function looksLikeJwt(token: string): boolean {
+  const parts = token.split('.');
+  return parts.length === 3 && parts.every((p) => p.length > 0);
+}
+
+/**
+ * Resolves auth for Vercel AI Gateway: env key > real API key from client > OIDC from this deployment > JWT in client (local dev).
+ */
+function resolveVercelGatewayAuth(req: NextRequest, clientApiKey: string | undefined): string {
+  const envKey = process.env.AI_GATEWAY_API_KEY?.trim();
+  const oidc = req.headers.get('x-vercel-oidc-token')?.trim();
+  const clientKey = clientApiKey?.trim();
+  const clientJwtShaped = clientKey && looksLikeJwt(clientKey);
+
+  return (
+    envKey ||
+    (!clientJwtShaped && clientKey) ||
+    oidc ||
+    clientKey ||
+    ''
+  );
+}
+
 export async function POST(req: NextRequest) {
   console.log('Hit /api/chat route');
   try {
     const body = await req.json();
     const { baseUrl, apiKey, provider, model, messages, stream } = body;
 
-    if (!baseUrl || !apiKey || !model || !messages) {
+    const authToken =
+      provider === 'vercel' ? resolveVercelGatewayAuth(req, apiKey) : apiKey?.trim();
+
+    if (!baseUrl || !authToken || !model || !messages) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
@@ -15,12 +42,18 @@ export async function POST(req: NextRequest) {
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
+      'Authorization': `Bearer ${authToken}`,
     };
 
     if (provider === 'openrouter') {
       headers['HTTP-Referer'] = req.headers.get('origin') || 'http://localhost:3000';
-      headers['X-Title'] = 'SQL Coder';
+      headers['X-Title'] = 'Schema Pad';
+    }
+
+    if (provider === 'vercel') {
+      const origin = req.headers.get('origin') || req.headers.get('referer') || 'http://localhost:3000';
+      headers['http-referer'] = origin;
+      headers['x-title'] = 'Schema Pad';
     }
 
     let cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;

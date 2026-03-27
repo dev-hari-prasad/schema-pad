@@ -3,13 +3,22 @@
 import React from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Gear, Desktop, Sun, Moon, PaintBucket, TextAa } from '@phosphor-icons/react';
+import { Gear, Desktop, Sun, Moon, PaintBucket, TextAa, ChatCircle } from '@phosphor-icons/react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { usePreferencesStore, Theme, CanvasColor, FontPreference } from '@/store/preferencesStore';
+import { usePreferencesStore, Theme, CanvasColor, FontPreference, ChatDockPosition } from '@/store/preferencesStore';
 
 export const PreferencesPanel = ({ children }: { children: React.ReactNode }) => {
-  const { theme, setTheme, canvasColor, setCanvasColor, fontPreference, setFontPreference } = usePreferencesStore();
+  const {
+    theme,
+    setTheme,
+    canvasColor,
+    setCanvasColor,
+    fontPreference,
+    setFontPreference,
+    chatDockPosition,
+    setChatDockPosition,
+  } = usePreferencesStore();
 
   const colors: { id: CanvasColor; bgStyle: string; darkStyle: string }[] = [
     { id: 'default', bgStyle: 'bg-white', darkStyle: 'bg-[#27272a]' },
@@ -49,7 +58,12 @@ export const PreferencesPanel = ({ children }: { children: React.ReactNode }) =>
               <Sun size={14} className="text-muted-foreground" /> 
               Theme
             </span>
-            <ToggleGroup type="single" value={theme} onValueChange={(t) => t && setTheme(t as Theme)} className="bg-secondary/45 p-1 rounded-lg border border-border/80 gap-1">
+            <ToggleGroup
+              type="single"
+              value={theme}
+              onValueChange={(t) => t && setTheme(t as Theme)}
+              className="bg-secondary/45 p-1 rounded-lg border border-border/80 gap-1"
+            >
               <ToggleGroupItem value="light" className="h-7 w-8 p-0 rounded-md data-[state=on]:bg-background data-[state=on]:shadow-sm data-[state=on]:text-foreground text-muted-foreground transition-all">
                 <Sun size={13} />
               </ToggleGroupItem>
@@ -61,25 +75,6 @@ export const PreferencesPanel = ({ children }: { children: React.ReactNode }) =>
               </ToggleGroupItem>
             </ToggleGroup>
           </div>
-
-          {/* Language Row
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-foreground flex items-center gap-2">
-              <Translate size={14} className="text-muted-foreground" />
-              Language
-            </span>
-            <Select defaultValue="en">
-              <SelectTrigger className="w-32 h-8 text-xs border-border bg-background focus:ring-1">
-                <SelectValue placeholder="Language" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="en">English</SelectItem>
-                <SelectItem value="es">Español</SelectItem>
-                <SelectItem value="fr">Français</SelectItem>
-                <SelectItem value="de">Deutsch</SelectItem>
-              </SelectContent>
-            </Select>
-          </div> */}
 
           {/* Canvas Background Row */}
           <div className="flex items-center justify-between gap-3 px-1 pt-1">
@@ -93,8 +88,17 @@ export const PreferencesPanel = ({ children }: { children: React.ReactNode }) =>
                   key={c.id}
                   onClick={() => setCanvasColor(c.id)}
                   className={`w-7 h-7 rounded-[7px] border transition-all shadow-sm ${
-                    canvasColor === c.id ? 'border-primary ring-2 ring-primary/20 ring-offset-1 ring-offset-background' : 'border-border opacity-70 hover:opacity-100 hover:border-muted-foreground'
-                  } ${theme === 'dark' || (theme === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches) ? c.darkStyle : c.bgStyle}`}
+                    canvasColor === c.id
+                      ? 'border-primary ring-2 ring-primary/20 ring-offset-1 ring-offset-background'
+                      : 'border-border opacity-70 hover:opacity-100 hover:border-muted-foreground'
+                  } ${
+                    theme === 'dark' ||
+                    (theme === 'system' &&
+                      typeof window !== 'undefined' &&
+                      window.matchMedia('(prefers-color-scheme: dark)').matches)
+                      ? c.darkStyle
+                      : c.bgStyle
+                  }`}
                   title={c.id.charAt(0).toUpperCase() + c.id.slice(1)}
                   aria-label={`Select ${c.id} canvas background`}
                 />
@@ -116,6 +120,23 @@ export const PreferencesPanel = ({ children }: { children: React.ReactNode }) =>
                 <SelectItem value="manrope">Manrope (Default)</SelectItem>
                 <SelectItem value="inter">Inter</SelectItem>
                 <SelectItem value="excalifont">Excalifont</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Chat Position Row */}
+          <div className="flex items-center justify-between px-1 pt-1">
+            <span className="text-sm font-medium text-foreground flex items-center gap-2">
+              <ChatCircle size={14} className="text-muted-foreground" />
+              Chat position
+            </span>
+            <Select value={chatDockPosition} onValueChange={(v) => setChatDockPosition(v as ChatDockPosition)}>
+              <SelectTrigger className="w-40 h-8 text-xs border-border/80 bg-background/80 focus:ring-1">
+                <SelectValue placeholder="Chat position" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="center">Center</SelectItem>
+                <SelectItem value="bottom-right">Bottom right</SelectItem>
               </SelectContent>
             </Select>
           </div>
