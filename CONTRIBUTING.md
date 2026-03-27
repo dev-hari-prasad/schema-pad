@@ -4,6 +4,19 @@ Thanks for your interest in contributing to Schema Pad.
 
 To help us review quickly and keep the project consistent, please prefer small, focused contributions.
 
+## Local Setup
+
+1. **Install dependencies**
+   ```bash
+   npm install
+   ```
+2. **Run the dev server**
+   ```bash
+   npm run dev
+   ```
+3. **Open in the browser**
+   [http://localhost:3000](http://localhost:3000)
+
 ## 1) Contributions We Usually Accept
 
 - Targeted bug fixes

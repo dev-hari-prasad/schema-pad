@@ -1,47 +1,27 @@
+<div align="center">
+  <img src="public/schema%20pad%20banner.png" alt="Schema Pad Banner" style="border-radius: 16px; width: 100%; max-width: 800px;" />
+</div>
+
 # Schema Pad
 
 A modern, interactive, web-based database schema designer and SQL generator.
 
+✨ **[Try it out at schemapad.dev](https://schemapad.dev)** ✨
+
 ## Features
 
-- **Visual schema design:** Create tables, define columns, and set data types on an intuitive canvas.
-- **Interactive relationships:** Connect primary and foreign keys by drawing lines between columns.
-- **AI assistant:** Chat that understands your current schema context and can help you optimize, normalize, or reason about your design. Supports multiple providers (OpenAI, Groq, OpenRouter, Vercel AI Gateway, and custom endpoints).
-- **Instant SQL generation:** View generated SQL for your schema in real time.
-- **Customizable workspace:** Group tables, toggle the grid, adjust zoom, and customize canvas background and fonts.
-- **Dark mode:** System, light, and dark themes.
-- **Keyboard navigation:** Command palette (press `/`) for quick actions.
+- **Visual schema design:** Create tables, define columns, and connect primary/foreign keys.
+- **AI assistant:** Chat with AI (OpenAI, Groq, etc.) to optimize and normalize your design.
+- **Instant SQL generation:** View generated SQL in real time. Supports raw SQL, Drizzle, Prisma, and JSON output formats for both PostgreSQL and MySQL.
+- **Customizable workspace:** Dark mode, grid toggle, zoom, and command palette (`/`).
 
-## Tech stack
+## Tech Stack
 
-- **Framework:** Next.js (App Router)
-- **Styling:** Tailwind CSS
-- **State:** Zustand
-- **Animation:** Framer Motion
-- **UI:** Radix UI / shadcn-style components
-- **Icons:** Phosphor Icons
+Next.js (App Router), Tailwind CSS, Zustand, Framer Motion, Radix UI.
 
-## Getting started
+## Contributing & Setup
 
-1. **Install dependencies**
-
-   ```bash
-   npm install
-   ```
-
-2. **Run the dev server**
-
-   ```bash
-   npm run dev
-   ```
-
-3. **Open in the browser**
-
-   [http://localhost:3000](http://localhost:3000)
-
-## Deployment
-
-The project is set up for deployment on Vercel; see `vercel.json` in the repo root.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines and local setup instructions.
 
 ## License
 
