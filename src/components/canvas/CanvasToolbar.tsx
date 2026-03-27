@@ -118,7 +118,7 @@ export const CanvasToolbar: React.FC<Props> = ({ onOpenSQL, isSQLOpen = false })
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2 }}
                     className="text-[14px] font-bold leading-none select-none whitespace-nowrap ml-2"
-                    style={{ fontFamily: '"Manrope", ui-sans-serif, system-ui, sans-serif' }}
+                    style={{ fontFamily: '"ManropeLocal", "Manrope", ui-sans-serif, system-ui, sans-serif' }}
                   >
                     <motion.span
                       animate={{ backgroundPosition: ['200% center', '-200% center'] }}

@@ -128,7 +128,7 @@ export const RelationshipLines: React.FC<Props> = ({ tables, relationships, conn
               fill="hsl(var(--muted-foreground))"
               fontSize={10}
               textAnchor="middle"
-              fontFamily="Manrope, sans-serif"
+              fontFamily="ManropeLocal, Manrope, sans-serif"
             >
               {rel.cardinality}
             </text>
