@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSchemaStore } from '@/store/schemaStore';
+import { usePreferencesStore } from '@/store/preferencesStore';
 
 /**
  * Hand-drawn style SVG arrow path generator using a simple quadratic bezier.
@@ -55,6 +56,8 @@ const ArrowHead: React.FC<{ x: number; y: number; angle: number; color: string }
 
 export const WelcomeOverlay: React.FC = () => {
   const tables = useSchemaStore((s) => s.tables);
+  const groups = useSchemaStore((s) => s.groups);
+  const chatDockPosition = usePreferencesStore((s) => s.chatDockPosition);
   const [dismissed, setDismissed] = useState(false);
   const [dimensions, setDimensions] = useState({ w: 0, h: 0 });
 
@@ -65,10 +68,10 @@ export const WelcomeOverlay: React.FC = () => {
     return () => window.removeEventListener('resize', update);
   }, []);
 
-  const isEmpty = tables.length === 0;
+  const isEmpty = tables.length === 0 && groups.length === 0;
   const show = isEmpty && !dismissed;
 
-  // Dismiss on any table creation
+  // Dismiss on any table or group creation
   useEffect(() => {
     if (!isEmpty) setDismissed(true);
   }, [isEmpty]);
@@ -108,7 +111,7 @@ export const WelcomeOverlay: React.FC = () => {
     },
     {
       id: 'ai-chat',
-      label: 'Ask AI to help build\nor just chat',
+      label: chatDockPosition === 'bottom-right' ? 'Zoom controls\n& shortcuts' : 'Ask AI to help build\nor just chat',
       fromAbs: { x: w / 2 - 110, y: h - 110 },
       toAbs: { x: w / 2 - 60, y: h - 68 },
       curvature: -0.2, // Swoop curved in the reversed direction
@@ -117,7 +120,7 @@ export const WelcomeOverlay: React.FC = () => {
     },
     {
       id: 'zoom-help',
-      label: 'Zoom controls\n& shortcuts',
+      label: chatDockPosition === 'bottom-right' ? 'Ask AI to help build\nor just chat' : 'Zoom controls\n& shortcuts',
       fromAbs: { x: w - 105, y: h - 90 },
       toAbs: { x: w - 60, y: h - 60 },
       curvature: -0.2,
