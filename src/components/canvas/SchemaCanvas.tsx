@@ -8,6 +8,7 @@ import { GroupBlock } from '@/components/canvas/GroupBlock';
 import { RelationshipLines } from '@/components/canvas/RelationshipLines';
 import { CanvasToolbar } from '@/components/canvas/CanvasToolbar';
 import { SlashCommandMenu } from '@/components/canvas/SlashCommandMenu';
+import { WelcomeOverlay } from '@/components/canvas/WelcomeOverlay';
 import { SQLPanel } from '@/components/canvas/SQLPanel';
 import { BottomChatInput } from '@/components/canvas/BottomChatInput';
 import { 
@@ -205,6 +206,7 @@ const SchemaCanvas: React.FC = () => {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      const key = e.key.toLowerCase();
 
       if (e.key === '/' && !e.ctrlKey && !e.metaKey && !isInput) {
         e.preventDefault();
@@ -223,17 +225,28 @@ const SchemaCanvas: React.FC = () => {
           store.removeTable(id);
         }
       }
-      if (e.key === 'g' && !e.ctrlKey && !e.metaKey && !isInput) {
+      if (key === 'g' && !e.ctrlKey && !e.metaKey && !isInput) {
         useSchemaStore.getState().toggleGrid();
       }
-      if (e.key === 'g' && (e.ctrlKey || e.metaKey) && !isInput) {
+      if (key === 't' && !e.ctrlKey && !e.metaKey && !isInput) {
+        e.preventDefault();
+        const rect = canvasRef.current?.getBoundingClientRect();
+        if (rect) {
+          addTable(screenToCanvas(rect.left + rect.width / 2, rect.top + rect.height / 2));
+        }
+      }
+      if (key === 'v' && !e.ctrlKey && !e.metaKey && !isInput) {
+        e.preventDefault();
+        setSqlPanelOpen(prev => !prev);
+      }
+      if (key === 'g' && (e.ctrlKey || e.metaKey) && !isInput) {
         e.preventDefault();
         window.open('https://github.com/dev-hari-prasad/schema-pad/issues/new', '_blank');
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [setSlashMenu, setConnectingFrom, setEditingTableId, setEditingColumnId]);
+  }, [setSlashMenu, setConnectingFrom, setEditingTableId, setEditingColumnId, addTable, screenToCanvas]);
 
   // Track mouse for relationship line drawing
   useEffect(() => {
@@ -386,6 +399,7 @@ const SchemaCanvas: React.FC = () => {
       </ContextMenu>
 
       <CanvasToolbar onOpenSQL={() => setSqlPanelOpen(true)} isSQLOpen={sqlPanelOpen} />
+      <WelcomeOverlay />
 
       {slashMenu && (
         <SlashCommandMenu
@@ -413,14 +427,14 @@ const SchemaCanvas: React.FC = () => {
 
       {/* Bottom Right Workspace Controls (hide ? when chat is docked bottom-right) */}
       {chatDockPosition !== 'bottom-right' && (
-        <div className="absolute bottom-3 right-3 flex items-center gap-2 z-10">
+        <div className="absolute bottom-3 right-3 flex items-center gap-2 z-50">
           {/* Help Popover */}
           <div className="group relative">
             <button className="flex items-center justify-center w-8 h-8 rounded-full bg-floating-bg border border-floating-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shadow-sm focus:outline-none">
               <Question size={15} weight="bold" />
             </button>
             
-            <div className="absolute bottom-full right-0 mb-2 w-60 p-3 rounded-lg bg-popover text-popover-foreground border border-border shadow-xl opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200">
+            <div className="absolute bottom-full right-0 mb-2 w-64 p-3 rounded-lg bg-popover text-popover-foreground border border-border shadow-xl opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200">
               <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-3 px-1">Shortcuts</h4>
               <div className="flex flex-col gap-2.5">
                 <div className="flex items-center gap-2.5 text-sm px-1">
@@ -428,8 +442,12 @@ const SchemaCanvas: React.FC = () => {
                   <span>Click and drag to pan</span>
                 </div>
                 <div className="flex items-center gap-2.5 text-sm px-1">
-                  <div className="w-5 flex justify-center text-muted-foreground"><MagnifyingGlass size={16} /></div>
-                  <span>Pinch to zoom</span>
+                  <div className="w-5 flex justify-center text-muted-foreground"><Table size={16} /></div>
+                  <span>New table: <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs ml-1 border border-border">T</kbd></span>
+                </div>
+                <div className="flex items-center gap-2.5 text-sm px-1">
+                  <div className="w-5 flex justify-center text-muted-foreground"><Code size={16} /></div>
+                  <span>View SQL: <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs ml-1 border border-border">V</kbd></span>
                 </div>
                 <div className="flex items-center gap-2.5 text-sm px-1">
                   <div className="w-5 flex justify-center text-muted-foreground"><Keyboard size={16} /></div>

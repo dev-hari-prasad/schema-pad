@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import hljs from 'highlight.js/lib/common';
-import 'highlight.js/styles/github-dark.css';
+import { useTheme } from 'next-themes';
 
 const SVGLIcon = ({ name, fallback }: { name: string; fallback?: React.ReactNode }) => {
   if (name === 'mysql') {
@@ -35,6 +35,7 @@ export const SQLPanel: React.FC<Props> = ({ onClose }) => {
   const [copied, setCopied] = useState(false);
   const [dialect, setDialect] = useState<'postgres' | 'mysql'>('postgres');
   const [orm, setOrm] = useState<'raw' | 'drizzle' | 'prisma' | 'json'>('raw');
+  const { resolvedTheme } = useTheme();
 
   const computedFormat: OutputFormat = orm === 'raw' ? dialect : (orm as OutputFormat);
 
@@ -83,7 +84,7 @@ export const SQLPanel: React.FC<Props> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-[100]">
       <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" onClick={onClose} />
       <div className="absolute right-3 top-3 bottom-3 w-[440px] rounded-lg border border-floating-border bg-floating-bg shadow-2xl flex flex-col animate-fade-in">
         <TooltipProvider delayDuration={200}>
@@ -147,7 +148,11 @@ export const SQLPanel: React.FC<Props> = ({ onClose }) => {
 
       {/* Code */}
       <div className="flex-1 overflow-auto p-4">
-        <div className="relative rounded-xl border border-border/60 bg-black/5 dark:bg-white/5 overflow-hidden">
+        <link 
+          rel="stylesheet" 
+          href={`https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/${resolvedTheme === 'dark' ? 'github-dark' : 'github'}.min.css`} 
+        />
+        <div className="relative rounded-xl border border-border/60 bg-[#f6f8fa] dark:bg-white/5 overflow-hidden shadow-inner">
           <div className="absolute top-0 right-0 z-10">
             <div className="flex items-center gap-0.5 p-1 rounded-lg rounded-bl-2xl border border-border/60 bg-floating-bg/70 backdrop-blur-md shadow-sm">
               <Tooltip>
@@ -178,7 +183,7 @@ export const SQLPanel: React.FC<Props> = ({ onClose }) => {
               </Tooltip>
             </div>
           </div>
-          <pre className="m-0 p-3 text-xs text-foreground font-mono leading-relaxed whitespace-pre rounded-xl">
+          <pre className="m-0 p-4 text-xs dark:text-foreground font-mono leading-relaxed whitespace-pre rounded-xl overflow-x-auto">
             <code
               className={`hljs language-${highlightLang} !bg-transparent`}
               dangerouslySetInnerHTML={{ __html: highlightedHtml }}
