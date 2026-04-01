@@ -23,7 +23,7 @@ export const usePreferencesStore = create<PreferencesStore>()(
       theme: 'system',
       canvasColor: 'default',
       fontPreference: 'manrope',
-      chatDockPosition: 'center',
+      chatDockPosition: 'bottom-right',
       setTheme: (theme) => set({ theme }),
       setCanvasColor: (canvasColor) => set({ canvasColor }),
       setFontPreference: (fontPreference) => set({ fontPreference }),

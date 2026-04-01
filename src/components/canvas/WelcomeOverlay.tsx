@@ -112,7 +112,7 @@ export const WelcomeOverlay: React.FC = () => {
     {
       id: 'ai-chat',
       label: chatDockPosition === 'bottom-right' ? 'Zoom controls\n& shortcuts' : 'Ask AI to help build\nor just chat',
-      fromAbs: { x: w / 2 - 110, y: h - 110 },
+      fromAbs: { x: w / 2 - 95, y: h - 98 },
       toAbs: { x: w / 2 - 60, y: h - 68 },
       curvature: -0.2, // Swoop curved in the reversed direction
       delay: 0.55,
@@ -121,7 +121,7 @@ export const WelcomeOverlay: React.FC = () => {
     {
       id: 'zoom-help',
       label: chatDockPosition === 'bottom-right' ? 'Ask AI to help build\nor just chat' : 'Zoom controls\n& shortcuts',
-      fromAbs: { x: w - 105, y: h - 90 },
+      fromAbs: { x: w - 90, y: h - 80 },
       toAbs: { x: w - 60, y: h - 60 },
       curvature: -0.2,
       delay: 0.65,

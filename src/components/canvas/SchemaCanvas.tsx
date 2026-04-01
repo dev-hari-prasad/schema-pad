@@ -420,14 +420,26 @@ const SchemaCanvas: React.FC = () => {
 
       {/* Zoom at bottom center when chat is docked bottom-right */}
       {chatDockPosition === 'bottom-right' && (
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 pointer-events-auto">
-          <CanvasZoomControls zoom={zoom} setZoom={setZoom} />
-        </div>
+        <motion.div
+          initial={{ y: 18, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.05, duration: 0.28, ease: 'easeOut' }}
+          className="absolute inset-x-0 bottom-3 z-10 flex justify-center pointer-events-none"
+        >
+          <div className="pointer-events-auto">
+            <CanvasZoomControls zoom={zoom} setZoom={setZoom} />
+          </div>
+        </motion.div>
       )}
 
       {/* Bottom Right Workspace Controls (hide ? when chat is docked bottom-right) */}
       {chatDockPosition !== 'bottom-right' && (
-        <div className="absolute bottom-3 right-3 flex items-center gap-2 z-50">
+        <motion.div
+          initial={{ y: 18, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.05, duration: 0.28, ease: 'easeOut' }}
+          className="absolute bottom-3 right-3 flex items-center gap-2 z-50"
+        >
           {/* Help Popover */}
           <div className="group relative">
             <button className="flex items-center justify-center w-8 h-8 rounded-full bg-floating-bg border border-floating-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shadow-sm focus:outline-none">
@@ -462,7 +474,7 @@ const SchemaCanvas: React.FC = () => {
           </div>
 
           {chatDockPosition === 'center' && <CanvasZoomControls zoom={zoom} setZoom={setZoom} />}
-        </div>
+        </motion.div>
       )}
     </div>
   );

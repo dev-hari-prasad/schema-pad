@@ -1,10 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CornersOut, PaperPlaneRight, Stop, Question, HandGrabbing, MagnifyingGlass, Keyboard, Bug } from '@phosphor-icons/react';
+import { CornersOut, PaperPlaneRight, Stop, Question, HandGrabbing, MagnifyingGlass, Keyboard, Bug, CaretUp } from '@phosphor-icons/react';
 import { AIChatPanel } from '@/components/canvas/AIChatPanel';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { cn } from '@/lib/utils';
+
+const DEFAULT_PANEL_SIZE = { width: 480, height: 430 };
+const RESIZE_STORAGE_KEY = 'schema-chat-panel-size';
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 const SUGGESTIONS = [
   "Help me enhance my schema",
@@ -25,12 +30,188 @@ export const BottomChatInput = () => {
   const [value, setValue] = useState("");
   const [chatMessage, setChatMessage] = useState<{ text: string; tick: number } | undefined>(undefined);
   const [isAILoading, setIsAILoading] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
+  const [panelSize, setPanelSize] = useState(DEFAULT_PANEL_SIZE);
+  const [isResizing, setIsResizing] = useState(false);
+  const [isResizeTooltipOpen, setIsResizeTooltipOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const resizeSessionRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    startWidth: number;
+    startHeight: number;
+  } | null>(null);
+  const resizeRafRef = useRef<number | null>(null);
+  const pendingResizeRef = useRef<{ width: number; height: number } | null>(null);
+
+  const dockRight = chatDockPosition === 'bottom-right';
+
+  const clampPanelSize = React.useCallback((width: number, height: number) => {
+    if (typeof window === 'undefined') {
+      return { width, height };
+    }
+
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    const maxWidth = Math.max(
+      320,
+      dockRight
+        ? Math.min(700, viewportWidth - 120)
+        : Math.min(920, viewportWidth - 20)
+    );
+    const minWidth = Math.min(360, maxWidth);
+
+    const maxHeight = Math.max(260, Math.min(680, viewportHeight - 150));
+    const minHeight = Math.min(280, maxHeight);
+
+    return {
+      width: clamp(width, minWidth, maxWidth),
+      height: clamp(height, minHeight, maxHeight),
+    };
+  }, [dockRight]);
 
   useEffect(() => {
     setSuggestionIdx(Math.floor(Math.random() * SUGGESTIONS.length));
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let parsed = DEFAULT_PANEL_SIZE;
+    try {
+      const raw = localStorage.getItem(RESIZE_STORAGE_KEY);
+      if (raw) {
+        const value = JSON.parse(raw) as { width?: number; height?: number };
+        if (typeof value.width === 'number' && typeof value.height === 'number') {
+          parsed = { width: value.width, height: value.height };
+        }
+      }
+    } catch {
+      parsed = DEFAULT_PANEL_SIZE;
+    }
+
+    // Migrate old default dimensions to the newer, smaller default.
+    if (parsed.width === 500 && parsed.height === 480) {
+      parsed = DEFAULT_PANEL_SIZE;
+    }
+
+    setPanelSize(clampPanelSize(parsed.width, parsed.height));
+  }, [clampPanelSize]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(RESIZE_STORAGE_KEY, JSON.stringify(panelSize));
+  }, [panelSize]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const onWindowResize = () => {
+      setPanelSize((current) => clampPanelSize(current.width, current.height));
+    };
+
+    window.addEventListener('resize', onWindowResize);
+    return () => window.removeEventListener('resize', onWindowResize);
+  }, [clampPanelSize]);
+
+  const stopResize = React.useCallback((pointerId?: number) => {
+    const session = resizeSessionRef.current;
+    if (!session) return;
+    if (typeof pointerId === 'number' && session.pointerId !== pointerId) return;
+
+    if (resizeRafRef.current !== null) {
+      cancelAnimationFrame(resizeRafRef.current);
+      resizeRafRef.current = null;
+    }
+
+    if (pendingResizeRef.current) {
+      setPanelSize(pendingResizeRef.current);
+      pendingResizeRef.current = null;
+    }
+
+    resizeSessionRef.current = null;
+    setIsResizing(false);
+  }, []);
+
+  const onResizePointerMove = React.useCallback((event: PointerEvent) => {
+    const session = resizeSessionRef.current;
+    if (!session || event.pointerId !== session.pointerId) return;
+
+    event.preventDefault();
+    const deltaX = event.clientX - session.startX;
+    const deltaY = event.clientY - session.startY;
+
+    // Left-corner handle: dragging left increases width, dragging right decreases width.
+    const nextWidth = session.startWidth - deltaX;
+    const nextHeight = session.startHeight - deltaY;
+
+    const clamped = clampPanelSize(nextWidth, nextHeight);
+
+    if (!dockRight) {
+      setPanelSize(clamped);
+      return;
+    }
+
+    pendingResizeRef.current = clamped;
+    if (resizeRafRef.current !== null) return;
+
+    resizeRafRef.current = requestAnimationFrame(() => {
+      resizeRafRef.current = null;
+      if (!pendingResizeRef.current) return;
+
+      // Slight interpolation on right-docked panel makes drag feel less jumpy.
+      setPanelSize((current) => ({
+        width: Math.round(current.width + (pendingResizeRef.current!.width - current.width) * 0.65),
+        height: Math.round(current.height + (pendingResizeRef.current!.height - current.height) * 0.65),
+      }));
+    });
+  }, [clampPanelSize, dockRight]);
+
+  useEffect(() => {
+    return () => {
+      if (resizeRafRef.current !== null) {
+        cancelAnimationFrame(resizeRafRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const onPointerUp = (event: PointerEvent) => stopResize(event.pointerId);
+
+    window.addEventListener('pointermove', onResizePointerMove, { passive: false });
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
+
+    return () => {
+      window.removeEventListener('pointermove', onResizePointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
+    };
+  }, [isResizing, onResizePointerMove, stopResize]);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const previousUserSelect = document.body.style.userSelect;
+    const previousCursor = document.body.style.cursor;
+
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'nwse-resize';
+
+    return () => {
+      document.body.style.userSelect = previousUserSelect;
+      document.body.style.cursor = previousCursor;
+    };
+  }, [isResizing]);
+
+  useEffect(() => {
+    if (isResizing) {
+      setIsResizeTooltipOpen(false);
+    }
+  }, [isResizing]);
 
   useEffect(() => {
     const handleAskAI = (event: Event) => {
@@ -77,9 +258,26 @@ export const BottomChatInput = () => {
     }
   };
 
-  const widthClass = isOpen || isFocused || value.trim() ? 'w-[500px]' : 'w-[380px]';
+  const handleResizePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!isOpen) return;
 
-  const dockRight = chatDockPosition === 'bottom-right';
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+
+    resizeSessionRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startWidth: panelSize.width,
+      startHeight: panelSize.height,
+    };
+
+    setIsResizing(true);
+  };
+
+  const collapsedWidth = 380;
+  const composerWidth = isOpen ? panelSize.width : collapsedWidth;
 
   return (
     <div
@@ -95,13 +293,36 @@ export const BottomChatInput = () => {
           opacity: isOpen ? 1 : 0,
           y: isOpen ? 0 : 24,
           scaleY: isOpen ? 1 : 0.85,
-          height: isOpen ? 480 : 0,
+          height: isOpen ? panelSize.height : 0,
         }}
         transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.9 }}
         className={cn('flex overflow-hidden', dockRight ? 'origin-bottom-right justify-end' : 'origin-bottom justify-center')}
         style={{ pointerEvents: isOpen ? 'auto' : 'none' }}
       >
-        <div className={`relative ${widthClass} h-full rounded-t-2xl overflow-hidden shadow-2xl border-t border-x border-floating-border bg-floating-bg transition-all duration-300`}>
+        <div
+          className="relative h-full rounded-t-2xl overflow-hidden shadow-2xl border-t border-x border-floating-border bg-floating-bg"
+          style={{ width: panelSize.width }}
+        >
+          <TooltipProvider delayDuration={140}>
+            <Tooltip open={isResizeTooltipOpen && !isResizing} onOpenChange={setIsResizeTooltipOpen}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onPointerDown={(event) => {
+                    setIsResizeTooltipOpen(false);
+                    handleResizePointerDown(event);
+                  }}
+                  className="absolute top-0 left-0.5 z-20 h-7 w-7 cursor-nwse-resize touch-none rounded-md text-foreground/25 opacity-45 hover:opacity-100 hover:text-foreground hover:bg-secondary/45 hover:translate-x-[1px] hover:translate-y-[1px] transition-all"
+                  aria-label="Resize AI panel"
+                >
+                  <CaretUp size={16} weight="fill" className="-rotate-[45deg]" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="text-xs bg-black text-white border-0 px-2 py-1 font-medium shadow-lg">
+                <p>Resize</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <AIChatPanel
             onClose={() => {
               setIsOpen(false);
@@ -122,7 +343,12 @@ export const BottomChatInput = () => {
 
       <div className="flex items-end gap-2">
         {dockRight && (
-          <div className="group relative shrink-0 mb-1.5">
+          <motion.div
+            initial={{ y: 18, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.05, duration: 0.28, ease: 'easeOut' }}
+            className="group relative shrink-0 mb-1.5"
+          >
             <button
               type="button"
               className="flex items-center justify-center w-8 h-8 rounded-full bg-floating-bg border border-floating-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shadow-sm focus:outline-none"
@@ -151,16 +377,16 @@ export const BottomChatInput = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
 
         <motion.form 
           onSubmit={handleSubmit}
-          className={`flex items-center ${widthClass} h-11 bg-floating-bg border-floating-border shadow-lg px-2.5 transition-all duration-300 ${isOpen ? 'border-t border-b border-x rounded-b-2xl' : 'border rounded-full focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary'}`}
+          className={`flex items-center h-11 bg-floating-bg border-floating-border shadow-lg px-2.5 ${isOpen ? 'border-t border-b border-x rounded-b-2xl' : 'border rounded-full focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary transition-all duration-300'}`}
           initial={{ y: 18, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.05, duration: 0.28, ease: 'easeOut' }}
-          style={{ willChange: 'transform, opacity' }}
+          style={{ willChange: 'transform, opacity', width: composerWidth, transition: isOpen ? 'none' : undefined }}
         >
           <div className="text-muted-foreground mr-3 shrink-0">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1172.25 1172.249948" className="w-5 h-5 fill-current">
@@ -173,8 +399,6 @@ export const BottomChatInput = () => {
             className="absolute inset-0 w-full h-full bg-transparent outline-none text-sm text-foreground placeholder:text-transparent z-10"
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
           />
           {!value && (
             <div className="absolute inset-0 flex items-center text-sm text-muted-foreground pointer-events-none truncate">
@@ -200,7 +424,7 @@ export const BottomChatInput = () => {
             </Tooltip>
           )}
 
-          {isMinimized && (
+          {!isOpen && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
