@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSchemaStore } from '@/store/schemaStore';
 import { generateSchema, OutputFormat } from '@/utils/generators';
 import { X, Copy, Download, CheckCircle, Code } from '@phosphor-icons/react';
@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import hljs from 'highlight.js/lib/common';
-import { useTheme } from 'next-themes';
 
 const SVGLIcon = ({ name, fallback }: { name: string; fallback?: React.ReactNode }) => {
   if (name === 'mysql') {
@@ -35,7 +34,22 @@ export const SQLPanel: React.FC<Props> = ({ onClose }) => {
   const [copied, setCopied] = useState(false);
   const [dialect, setDialect] = useState<'postgres' | 'mysql'>('postgres');
   const [orm, setOrm] = useState<'raw' | 'drizzle' | 'prisma' | 'json'>('raw');
-  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+
+    const root = document.documentElement;
+    const syncIsDark = () => setIsDark(root.classList.contains('dark'));
+
+    syncIsDark();
+
+    const observer = new MutationObserver(syncIsDark);
+    observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+
+    return () => observer.disconnect();
+  }, []);
 
   const computedFormat: OutputFormat = orm === 'raw' ? dialect : (orm as OutputFormat);
 
@@ -109,7 +123,7 @@ export const SQLPanel: React.FC<Props> = ({ onClose }) => {
               <SelectTrigger className="w-[150px] h-7 text-xs border-border bg-background focus:ring-1">
                 <SelectValue placeholder="Format" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[110]">
                 <SelectItem value="raw">
                   <div className="flex items-center gap-2">
                     {dialect === 'postgres' ? <SVGLIcon name="postgresql" fallback={<Code size={14} />} /> : <SVGLIcon name="mysql" fallback={<Code size={14} />} />}
@@ -148,10 +162,13 @@ export const SQLPanel: React.FC<Props> = ({ onClose }) => {
 
       {/* Code */}
       <div className="flex-1 overflow-auto p-4">
-        <link 
-          rel="stylesheet" 
-          href={`https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/${resolvedTheme === 'dark' ? 'github-dark' : 'github'}.min.css`} 
-        />
+        {mounted && (
+          <link 
+            rel="stylesheet" 
+            href={`https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/${isDark ? 'github-dark' : 'github'}.min.css`} 
+            key={isDark ? 'dark' : 'light'}
+          />
+        )}
         <div className="relative rounded-xl border border-border/60 bg-[#f6f8fa] dark:bg-white/5 overflow-hidden shadow-inner">
           <div className="absolute top-0 right-0 z-10">
             <div className="flex items-center gap-0.5 p-1 rounded-lg rounded-bl-2xl border border-border/60 bg-floating-bg/70 backdrop-blur-md shadow-sm">
@@ -183,7 +200,7 @@ export const SQLPanel: React.FC<Props> = ({ onClose }) => {
               </Tooltip>
             </div>
           </div>
-          <pre className="m-0 p-4 text-xs dark:text-foreground font-mono leading-relaxed whitespace-pre rounded-xl overflow-x-auto">
+          <pre className="m-0 p-4 text-xs text-slate-800 dark:text-slate-200 font-mono leading-relaxed whitespace-pre rounded-xl overflow-x-auto">
             <code
               className={`hljs language-${highlightLang} !bg-transparent`}
               dangerouslySetInnerHTML={{ __html: highlightedHtml }}
