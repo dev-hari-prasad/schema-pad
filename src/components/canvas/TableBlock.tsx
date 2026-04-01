@@ -44,12 +44,22 @@ export const TableBlock: React.FC<TableBlockProps> = ({ table }) => {
   );
   const nameInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (isEditing && nameInputRef.current) {
-      nameInputRef.current.focus();
-      nameInputRef.current.select();
+  const focusNameInput = useCallback(() => {
+    const input = nameInputRef.current;
+    if (!input) return;
+    try {
+      input.focus({ preventScroll: true });
+    } catch {
+      input.focus();
     }
-  }, [isEditing]);
+    input.select();
+  }, []);
+
+  useEffect(() => {
+    if (isEditing) {
+      focusNameInput();
+    }
+  }, [isEditing, focusNameInput]);
 
   useEffect(() => {
     const onResize = () => setViewportWidth(window.innerWidth);
@@ -330,8 +340,7 @@ export const TableBlock: React.FC<TableBlockProps> = ({ table }) => {
             setSelectedIds([table.id]);
             setEditingTableId(table.id);
             window.setTimeout(() => {
-              nameInputRef.current?.focus();
-              nameInputRef.current?.select();
+              focusNameInput();
             }, 0);
           }}
         >
