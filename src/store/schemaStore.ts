@@ -9,6 +9,10 @@ const GROUP_PAD_TOP = 44;
 const GROUP_PAD_BOTTOM = 24;
 const GROUP_MIN_WIDTH = 200;
 const GROUP_MIN_HEIGHT = 120;
+const SCHEMA_STORAGE_KEY = 'schema-storage-v1';
+const SCHEMA_PERSIST_DEBOUNCE_MS = 200;
+
+const clampZoom = (zoom: number) => Math.max(0.1, Math.min(3, zoom));
 
 export function getTableHeight(table: TableNode): number {
   return TABLE_HEADER_HEIGHT + table.columns.length * COLUMN_ROW_HEIGHT + 32;
@@ -105,16 +109,78 @@ interface SchemaStore {
   clearAll: () => void;
 }
 
-let counter = 0;
-const uid = () => `id_${++counter}_${Date.now().toString(36)}`;
+type PersistedSchemaState = Pick<SchemaStore, 'tables' | 'groups' | 'relationships' | 'pan' | 'zoom' | 'showGrid'>;
 
-export const useSchemaStore = create<SchemaStore>((set, get) => ({
+const DEFAULT_PERSISTED_SCHEMA_STATE: PersistedSchemaState = {
   tables: [],
   groups: [],
   relationships: [],
   pan: { x: 0, y: 0 },
   zoom: 1,
   showGrid: true,
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function selectPersistedSchemaState(state: SchemaStore): PersistedSchemaState {
+  return {
+    tables: state.tables,
+    groups: state.groups,
+    relationships: state.relationships,
+    pan: state.pan,
+    zoom: state.zoom,
+    showGrid: state.showGrid,
+  };
+}
+
+function loadPersistedSchemaState(): PersistedSchemaState {
+  if (typeof window === 'undefined') {
+    return DEFAULT_PERSISTED_SCHEMA_STATE;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(SCHEMA_STORAGE_KEY);
+    if (!raw) {
+      return DEFAULT_PERSISTED_SCHEMA_STATE;
+    }
+
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed)) {
+      return DEFAULT_PERSISTED_SCHEMA_STATE;
+    }
+
+    const panValue = parsed.pan;
+    const pan =
+      isRecord(panValue) && typeof panValue.x === 'number' && typeof panValue.y === 'number'
+        ? { x: panValue.x, y: panValue.y }
+        : DEFAULT_PERSISTED_SCHEMA_STATE.pan;
+
+    return {
+      tables: Array.isArray(parsed.tables) ? (parsed.tables as TableNode[]) : [],
+      groups: Array.isArray(parsed.groups) ? (parsed.groups as GroupNode[]) : [],
+      relationships: Array.isArray(parsed.relationships) ? (parsed.relationships as Relationship[]) : [],
+      pan,
+      zoom: typeof parsed.zoom === 'number' ? clampZoom(parsed.zoom) : DEFAULT_PERSISTED_SCHEMA_STATE.zoom,
+      showGrid: typeof parsed.showGrid === 'boolean' ? parsed.showGrid : DEFAULT_PERSISTED_SCHEMA_STATE.showGrid,
+    };
+  } catch {
+    return DEFAULT_PERSISTED_SCHEMA_STATE;
+  }
+}
+
+let counter = 0;
+const uid = () => `id_${++counter}_${Date.now().toString(36)}`;
+const initialPersistedState = loadPersistedSchemaState();
+
+export const useSchemaStore = create<SchemaStore>((set, get) => ({
+  tables: initialPersistedState.tables,
+  groups: initialPersistedState.groups,
+  relationships: initialPersistedState.relationships,
+  pan: initialPersistedState.pan,
+  zoom: initialPersistedState.zoom,
+  showGrid: initialPersistedState.showGrid,
   selectedIds: [],
   editingTableId: null,
   editingColumnId: null,
@@ -456,7 +522,7 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
     })),
 
   setPan: (pan) => set({ pan }),
-  setZoom: (zoom) => set({ zoom: Math.max(0.1, Math.min(3, zoom)) }),
+  setZoom: (zoom) => set({ zoom: clampZoom(zoom) }),
   toggleGrid: () => set((s) => ({ showGrid: !s.showGrid })),
   setSelectedIds: (ids) => set({ selectedIds: ids }),
   toggleSelected: (id) =>
@@ -497,6 +563,36 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
     });
   },
 }));
+
+let persistSaveTimeout: ReturnType<typeof setTimeout> | null = null;
+let lastPersistedSnapshot = '';
+
+const scheduleSchemaPersist = (state: SchemaStore) => {
+  if (typeof window === 'undefined') return;
+
+  const snapshot = JSON.stringify(selectPersistedSchemaState(state));
+  if (snapshot === lastPersistedSnapshot) return;
+
+  lastPersistedSnapshot = snapshot;
+  if (persistSaveTimeout) {
+    clearTimeout(persistSaveTimeout);
+  }
+
+  // Debounced writes keep pan/drag interactions smooth while still auto-saving quickly.
+  persistSaveTimeout = setTimeout(() => {
+    try {
+      window.localStorage.setItem(SCHEMA_STORAGE_KEY, lastPersistedSnapshot);
+    } catch {
+      // Ignore storage failures to avoid breaking canvas interactions.
+    }
+    persistSaveTimeout = null;
+  }, SCHEMA_PERSIST_DEBOUNCE_MS);
+};
+
+if (typeof window !== 'undefined') {
+  lastPersistedSnapshot = JSON.stringify(selectPersistedSchemaState(useSchemaStore.getState()));
+  useSchemaStore.subscribe(scheduleSchemaPersist);
+}
 
 // Auto-resize groups whenever tables change, then fix overlaps
 const GROUP_REFLOW_GAP = 50;

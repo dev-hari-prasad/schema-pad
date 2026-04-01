@@ -113,6 +113,15 @@ export const SlashCommandMenu: React.FC<Props> = ({ position, onSelect, onAskAI,
             onChange={(e) => setFilter(e.target.value)}
             onKeyDown={handleKeyDown}
           />
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-muted-foreground font-mono text-[10px] leading-none bg-secondary px-1.5 py-0.5 rounded border border-border hover:text-foreground transition-colors"
+            aria-label="Close command menu"
+            title="Close (Esc)"
+          >
+            Esc
+          </button>
         </div>
         <div ref={listRef} className="max-h-[260px] overflow-y-auto p-1 scrollbar-thin">
           {filtered.map((cmd, i) => {
