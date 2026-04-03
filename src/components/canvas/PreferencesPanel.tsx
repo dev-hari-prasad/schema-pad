@@ -3,10 +3,10 @@
 import React from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Gear, Desktop, Sun, Moon, PaintBucket, TextAa, ChatCircle } from '@phosphor-icons/react';
+import { Gear, Desktop, Sun, Moon, PaintBucket, TextAa } from '@phosphor-icons/react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { usePreferencesStore, Theme, CanvasColor, FontPreference, ChatDockPosition } from '@/store/preferencesStore';
+import { usePreferencesStore, Theme, CanvasColor, FontPreference } from '@/store/preferencesStore';
 
 export const PreferencesPanel = ({ children }: { children: React.ReactNode }) => {
   const {
@@ -16,8 +16,6 @@ export const PreferencesPanel = ({ children }: { children: React.ReactNode }) =>
     setCanvasColor,
     fontPreference,
     setFontPreference,
-    chatDockPosition,
-    setChatDockPosition,
   } = usePreferencesStore();
 
   const colors: { id: CanvasColor; bgStyle: string; darkStyle: string }[] = [
@@ -120,23 +118,6 @@ export const PreferencesPanel = ({ children }: { children: React.ReactNode }) =>
                 <SelectItem value="manrope">Manrope (Default)</SelectItem>
                 <SelectItem value="inter">Inter</SelectItem>
                 <SelectItem value="excalifont">Excalifont</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Chat Position Row */}
-          <div className="flex items-center justify-between px-1 pt-1">
-            <span className="text-sm font-medium text-foreground flex items-center gap-2">
-              <ChatCircle size={14} className="text-muted-foreground" />
-              Chat position
-            </span>
-            <Select value={chatDockPosition} onValueChange={(v) => setChatDockPosition(v as ChatDockPosition)}>
-              <SelectTrigger className="w-40 h-8 text-xs border-border/80 bg-background/80 focus:ring-1">
-                <SelectValue placeholder="Chat position" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="center">Center</SelectItem>
-                <SelectItem value="bottom-right">Bottom right</SelectItem>
               </SelectContent>
             </Select>
           </div>

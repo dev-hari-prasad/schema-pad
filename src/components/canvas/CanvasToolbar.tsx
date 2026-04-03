@@ -21,11 +21,8 @@ export const CanvasToolbar: React.FC<Props> = ({ onOpenSQL, isSQLOpen = false })
   const { zoom, showGrid, setZoom, toggleGrid, addTable, clearAll, pan, importSchema, addGroup } = useSchemaStore();
   const [showSQLText, setShowSQLText] = React.useState(true);
   const [showLogoText, setShowLogoText] = React.useState(true);
-  const [isLogoHovered, setIsLogoHovered] = React.useState(false);
   const [confirmClearOpen, setConfirmClearOpen] = React.useState(false);
   const [shareOpen, setShareOpen] = React.useState(false);
-
-  const displayLogoText = showLogoText || isLogoHovered;
 
   React.useEffect(() => {
     const timer = setTimeout(() => setShowSQLText(false), 3000);
@@ -93,14 +90,18 @@ export const CanvasToolbar: React.FC<Props> = ({ onOpenSQL, isSQLOpen = false })
             animate={{ y: 0, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 400, damping: 25 }}
             className="flex items-center bg-floating-bg border border-floating-border shadow-sm rounded-[10px] overflow-hidden outline-none cursor-pointer"
-            onMouseEnter={() => setIsLogoHovered(true)}
-            onMouseLeave={() => setIsLogoHovered(false)}
             aria-label="Schema Pad"
+            onMouseEnter={() => setShowLogoText(true)}
+            onMouseLeave={() => setShowLogoText(false)}
+            onClick={() => {
+              const urls = ['https://schemapad.dev/', 'https://github.com/dev-hari-prasad/schema-pad'];
+              window.open(urls[Math.floor(Math.random() * urls.length)], '_blank');
+            }}
           >
             <motion.div 
               className="flex items-center justify-start h-10 overflow-hidden"
               animate={{
-                width: displayLogoText ? 132 : 40,
+                width: showLogoText ? 132 : 40,
               }}
               transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
               style={{ paddingLeft: 10 }}
@@ -111,7 +112,7 @@ export const CanvasToolbar: React.FC<Props> = ({ onOpenSQL, isSQLOpen = false })
                 className="w-5 h-5 rounded-sm object-contain shrink-0"
               />
               <AnimatePresence>
-                {displayLogoText && (
+                {showLogoText && (
                   <motion.span
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -143,6 +144,7 @@ export const CanvasToolbar: React.FC<Props> = ({ onOpenSQL, isSQLOpen = false })
               initial={{ y: -20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              data-onboarding="toolbar-main"
               className="flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-floating-bg border border-floating-border shadow-sm"
             >
               <ToolbarButton icon={<Table size={18} />} onClick={handleAddTable} tooltip="Add table" />

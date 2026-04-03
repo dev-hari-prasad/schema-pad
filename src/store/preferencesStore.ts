@@ -4,7 +4,7 @@ import { persist } from 'zustand/middleware';
 export type Theme = 'light' | 'dark' | 'system';
 export type CanvasColor = 'default' | 'white' | 'gray' | 'blue' | 'yellow' | 'pink';
 export type FontPreference = 'manrope' | 'inter' | 'excalifont';
-export type ChatDockPosition = 'center' | 'bottom-right';
+export type ChatDockPosition = 'bottom-right';
 
 interface PreferencesStore {
   theme: Theme;
@@ -14,7 +14,6 @@ interface PreferencesStore {
   setTheme: (theme: Theme) => void;
   setCanvasColor: (color: CanvasColor) => void;
   setFontPreference: (fontPreference: FontPreference) => void;
-  setChatDockPosition: (position: ChatDockPosition) => void;
 }
 
 export const usePreferencesStore = create<PreferencesStore>()(
@@ -27,10 +26,16 @@ export const usePreferencesStore = create<PreferencesStore>()(
       setTheme: (theme) => set({ theme }),
       setCanvasColor: (canvasColor) => set({ canvasColor }),
       setFontPreference: (fontPreference) => set({ fontPreference }),
-      setChatDockPosition: (chatDockPosition) => set({ chatDockPosition }),
     }),
     {
       name: 'preferences-storage',
+      merge: (persistedState, currentState) => {
+        return {
+          ...currentState,
+          ...(persistedState as object),
+          chatDockPosition: 'bottom-right',
+        };
+      },
     }
   )
 );

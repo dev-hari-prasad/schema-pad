@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CornersOut, PaperPlaneRight, Stop, Question, HandGrabbing, MagnifyingGlass, Keyboard, Bug, CaretUp } from '@phosphor-icons/react';
 import { AIChatPanel } from '@/components/canvas/AIChatPanel';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { usePreferencesStore } from '@/store/preferencesStore';
 import { cn } from '@/lib/utils';
 
 const DEFAULT_PANEL_SIZE = { width: 480, height: 430 };
@@ -22,7 +21,6 @@ const SUGGESTIONS = [
 ];
 
 export const BottomChatInput = () => {
-  const chatDockPosition = usePreferencesStore((s) => s.chatDockPosition);
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [clearTick, setClearTick] = useState(0);
@@ -44,7 +42,7 @@ export const BottomChatInput = () => {
   const resizeRafRef = useRef<number | null>(null);
   const pendingResizeRef = useRef<{ width: number; height: number } | null>(null);
 
-  const dockRight = chatDockPosition === 'bottom-right';
+  const dockRight = true;
 
   const clampPanelSize = React.useCallback((width: number, height: number) => {
     if (typeof window === 'undefined') {
@@ -382,6 +380,7 @@ export const BottomChatInput = () => {
 
         <motion.form 
           onSubmit={handleSubmit}
+          data-onboarding="chat-composer"
           className={`flex items-center h-11 bg-floating-bg border-floating-border shadow-lg px-2.5 ${isOpen ? 'border-t border-b border-x rounded-b-2xl' : 'border rounded-full focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary transition-all duration-300'}`}
           initial={{ y: 18, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
