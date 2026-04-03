@@ -13,6 +13,7 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface Props {
   group: GroupNode;
@@ -67,7 +68,7 @@ function getGroupColors(color: unknown) {
 }
 
 export const GroupBlock: React.FC<Props> = ({ group }) => {
-  const { moveGroup, updateGroupName, removeGroup, removeGroupAndTables, updateGroupColor, addTableToGroup } = useSchemaStore();
+  const { moveGroup, updateGroupName, removeGroup, removeGroupAndTables, updateGroupColor, addTableToGroup, saveHistory } = useSchemaStore();
   
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
@@ -88,6 +89,7 @@ export const GroupBlock: React.FC<Props> = ({ group }) => {
     if ((e.target as HTMLElement).closest('.group-name')) return;
     
     e.stopPropagation();
+    saveHistory();
     setIsDragging(true);
     dragStart.current = {
       x: e.clientX,
@@ -122,6 +124,7 @@ export const GroupBlock: React.FC<Props> = ({ group }) => {
   // Resizing logic
   const handleResizePointerDown = useCallback((e: React.PointerEvent, dir: string) => {
     e.stopPropagation();
+    saveHistory();
     setIsResizing(true);
     setResizeDir(dir);
     resizeStart.current = {
@@ -172,23 +175,6 @@ export const GroupBlock: React.FC<Props> = ({ group }) => {
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
   }, []);
 
-  useEffect(() => {
-    if (!showMenu) return;
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShowMenu(false);
-      }
-    };
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setShowMenu(false);
-    };
-    document.addEventListener('mousedown', handleOutsideClick);
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [showMenu]);
 
   return (
     <ContextMenu>
@@ -228,6 +214,7 @@ export const GroupBlock: React.FC<Props> = ({ group }) => {
               <input
                 ref={nameInputRef}
                 value={group.name}
+                onFocus={() => saveHistory()}
                 onChange={(e) => updateGroupName(group.id, e.target.value)}
                 onBlur={() => setIsEditingName(false)}
                 onKeyDown={(e) => {
@@ -260,23 +247,30 @@ export const GroupBlock: React.FC<Props> = ({ group }) => {
         </div>
         
         {/* Controls */}
-        <div ref={menuRef} className="group-controls relative flex items-center">
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowMenu(!showMenu);
-            }} 
-            className="p-1 rounded opacity-60 hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10"
-          >
-            <DotsThree size={16} weight="bold" />
-          </button>
-          
-          {showMenu && (
-            <div className="absolute top-8 right-0 bg-popover text-popover-foreground border border-border rounded-md shadow-xl w-44 z-50 overflow-hidden flex flex-col">
+        <div className="group-controls relative flex items-center">
+          <Popover open={showMenu} onOpenChange={setShowMenu}>
+            <PopoverTrigger asChild>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMenu(!showMenu);
+                }} 
+                className="p-1 rounded opacity-60 hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10"
+              >
+                <DotsThree size={16} weight="bold" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent 
+              align="end" 
+              sideOffset={4}
+              onPointerDownOutside={() => setShowMenu(false)}
+              className="p-0 border-border rounded-md shadow-xl w-44 z-[100] overflow-hidden flex flex-col bg-popover text-popover-foreground"
+            >
               <div className="p-2 border-b border-border space-y-2">
                 <div className="text-[10px] font-semibold uppercase text-muted-foreground px-1">Name</div>
                 <input
                   value={group.name}
+                  onFocus={() => saveHistory()}
                   onChange={(e) => updateGroupName(group.id, e.target.value)}
                   className="w-full text-xs px-2 py-1 rounded bg-secondary text-foreground outline-none focus:ring-1 focus:ring-primary"
                   placeholder="Group Name"
@@ -318,8 +312,8 @@ export const GroupBlock: React.FC<Props> = ({ group }) => {
                   <Trash size={14} /> Delete group & tables
                 </button>
               </div>
-            </div>
-          )}
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 

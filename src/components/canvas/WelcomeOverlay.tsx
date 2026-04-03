@@ -179,12 +179,12 @@ export const WelcomeOverlay: React.FC = () => {
     },
     {
       id: 'ai-chat',
-      label: 'Zoom controls\n& shortcuts',
-      fromAbs: { x: 178, y: h - 86 },
-      toAbs: { x: 136, y: h - 58 },
+      label: 'Zoom controls\n& history',
+      fromAbs: { x: 263, y: h - 86 },
+      toAbs: { x: 221, y: h - 58 },
       curvature: -0.14,
       delay: 0.55,
-      labelStyle: { bottom: 92, left: 176, textAlign: 'left' } as React.CSSProperties,
+      labelStyle: { bottom: 92, left: 261, textAlign: 'left' } as React.CSSProperties,
     },
     {
       id: 'zoom-help',
@@ -286,7 +286,7 @@ export const WelcomeOverlay: React.FC = () => {
           <div
             className="absolute pointer-events-none"
             style={{
-              top: '44%',
+              top: '48%',
               left: '50%',
               transform: 'translate(-50%, -50%)',
               width: '100%',
@@ -321,7 +321,7 @@ export const WelcomeOverlay: React.FC = () => {
               </motion.div>
 
               <motion.p
-                className="text-base text-muted-foreground flex justify-center w-full leading-relaxed mb-5 leading-tight"
+                className="text-base text-muted-foreground flex justify-center w-full leading-normal mb-5"
                 style={{ fontFamily: '"ManropeLocal", "Manrope", ui-sans-serif, system-ui, sans-serif' }}
                 initial={{ y: 15, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
