@@ -31,7 +31,7 @@ export const TableBlock: React.FC<TableBlockProps> = ({ table }) => {
     selectedIds, editingTableId, editingColumnId,
     setSelectedIds, toggleSelected, setEditingTableId, setEditingColumnId,
     updateTableName, moveTable, addColumn, updateColumn, removeColumn, removeTable,
-    duplicateTable, connectingFrom, setConnectingFrom, addRelationship, groups, moveTableToGroup, tables,
+    duplicateTable, connectingFrom, setConnectingFrom, addRelationship, groups, moveTableToGroup, tables, saveHistory,
   } = useSchemaStore();
 
   const isSelected = selectedIds.includes(table.id);
@@ -91,13 +91,14 @@ export const TableBlock: React.FC<TableBlockProps> = ({ table }) => {
       const isHandle = !!el.closest('.table-drag-handle');
       if (!isHandle) return;
 
+      saveHistory();
       setDragging(true);
       setDragOffset({
         x: e.clientX / useSchemaStore.getState().zoom - table.position.x,
         y: e.clientY / useSchemaStore.getState().zoom - table.position.y,
       });
     },
-    [table.id, table.position, isSelected, setSelectedIds, toggleSelected]
+    [table.id, table.position, isSelected, setSelectedIds, toggleSelected, saveHistory]
   );
 
   useEffect(() => {
@@ -238,6 +239,7 @@ export const TableBlock: React.FC<TableBlockProps> = ({ table }) => {
                       ref={nameInputRef}
                       className={`bg-transparent text-[15px] font-semibold outline-none w-full ${isDuplicateTableName ? 'text-destructive' : 'text-foreground'}`}
                       value={table.name}
+                      onFocus={() => saveHistory()}
                       onChange={(e) => updateTableName(table.id, e.target.value)}
                       onKeyDown={(e) => handleKeyDown(e)}
                       onBlur={() => setEditingTableId(null)}
@@ -408,7 +410,7 @@ interface ColumnRowProps {
 const ColumnRow: React.FC<ColumnRowProps> = ({
   column, tableId, columns, isEditing, isConnecting, onConnect, onKeyDown,
 }) => {
-  const { setEditingColumnId, updateColumn, removeColumn } = useSchemaStore();
+  const { setEditingColumnId, updateColumn, removeColumn, saveHistory } = useSchemaStore();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const isDuplicateColumnName = columns.some(c => c.id !== column.id && c.name.toLowerCase() === column.name.toLowerCase());
@@ -454,6 +456,7 @@ const ColumnRow: React.FC<ColumnRowProps> = ({
               }`}
               onClick={(e) => {
                 e.stopPropagation();
+                saveHistory();
                 const nextPrimary = !column.isPrimaryKey;
                 updateColumn(tableId, column.id, {
                   isPrimaryKey: nextPrimary,
@@ -481,6 +484,7 @@ const ColumnRow: React.FC<ColumnRowProps> = ({
                 ref={inputRef}
                 className={`bg-transparent text-[13px] font-medium outline-none flex-1 min-w-0 ${isDuplicateColumnName ? 'text-destructive' : 'text-foreground'}`}
                 value={column.name}
+                onFocus={() => saveHistory()}
                 onChange={(e) => updateColumn(tableId, column.id, { name: e.target.value })}
                 onKeyDown={onKeyDown}
                 onBlur={() => setEditingColumnId(null)}
@@ -516,7 +520,10 @@ const ColumnRow: React.FC<ColumnRowProps> = ({
       <div className="flex items-center gap-1 pl-2 pr-0.5 flex-shrink-0">
         <DataTypePicker
           value={column.type}
-          onSelect={(type) => updateColumn(tableId, column.id, { type })}
+          onSelect={(type) => {
+            saveHistory();
+            updateColumn(tableId, column.id, { type });
+          }}
         />
 
         <Tooltip>
@@ -530,6 +537,7 @@ const ColumnRow: React.FC<ColumnRowProps> = ({
               onClick={(e) => {
                 e.stopPropagation();
                 if (column.isPrimaryKey) return;
+                saveHistory();
                 updateColumn(tableId, column.id, { isNullable: !column.isNullable });
               }}
             >

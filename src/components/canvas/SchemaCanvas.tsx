@@ -21,7 +21,9 @@ import {
   Table,
   FolderPlus,
   Code,
-  Bug
+  Bug,
+  ArrowCounterClockwise,
+  ArrowClockwise
 } from '@phosphor-icons/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -30,6 +32,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const CanvasZoomControls: React.FC<{
   zoom: number;
@@ -68,9 +71,12 @@ const CanvasZoomControls: React.FC<{
 
 const SchemaCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLDivElement>(null);
-  const { tables, groups, relationships, pan, zoom, showGrid, selectedIds, connectingFrom } = useSchemaStore();
-  const { setPan, setZoom, addTable, addGroup, setSelectedIds, setEditingTableId, setEditingColumnId, setConnectingFrom } = useSchemaStore();
+  const { tables, groups, relationships, pan, zoom, showGrid, selectedIds, connectingFrom, past, future } = useSchemaStore();
+  const { setPan, setZoom, addTable, addGroup, setSelectedIds, setEditingTableId, setEditingColumnId, setConnectingFrom, undo, redo } = useSchemaStore();
   const chatDockPosition = usePreferencesStore((s) => s.chatDockPosition);
+
+  const isMac = typeof window !== 'undefined' ? /Mac|iPod|iPhone|iPad/.test(navigator.platform) : false;
+  const modKey = isMac ? '⌘' : 'Ctrl';
 
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
@@ -207,8 +213,25 @@ const SchemaCanvas: React.FC = () => {
       const target = e.target as HTMLElement;
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
       const key = e.key.toLowerCase();
+      const isMod = e.ctrlKey || e.metaKey;
 
-      if (e.key === '/' && !e.ctrlKey && !e.metaKey && !isInput) {
+      if (isMod && key === 'z' && !isInput) {
+        e.preventDefault();
+        if (e.shiftKey) {
+          useSchemaStore.getState().redo();
+        } else {
+          useSchemaStore.getState().undo();
+        }
+        return;
+      }
+      
+      if (isMod && key === 'y' && !isInput) {
+        e.preventDefault();
+        useSchemaStore.getState().redo();
+        return;
+      }
+
+      if (e.key === '/' && !isMod && !isInput) {
         e.preventDefault();
         const rect = canvasRef.current?.getBoundingClientRect();
         if (rect) setSlashMenu({ x: rect.width / 2, y: rect.height / 2 });
@@ -221,8 +244,8 @@ const SchemaCanvas: React.FC = () => {
       }
       if ((e.key === 'Delete' || e.key === 'Backspace') && !isInput) {
         const store = useSchemaStore.getState();
-        for (const id of store.selectedIds) {
-          store.removeTable(id);
+        if (store.selectedIds.length > 0) {
+          store.removeTables(store.selectedIds);
         }
       }
       if (key === 'g' && !e.ctrlKey && !e.metaKey && !isInput) {
@@ -422,15 +445,67 @@ const SchemaCanvas: React.FC = () => {
       {sqlPanelOpen && <SQLPanel onClose={() => setSqlPanelOpen(false)} />}
       <BottomChatInput />
 
-      {/* Zoom controls (bottom-left) */}
+      {/* Zoom controls and Undo/Redo (bottom-left) */}
       <motion.div
         initial={{ y: 18, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.05, duration: 0.28, ease: 'easeOut' }}
-        className="absolute bottom-3 left-3 z-10 pointer-events-none"
+        className="absolute bottom-3 left-3 z-10 pointer-events-none flex items-center gap-2"
       >
         <div className="pointer-events-auto">
           <CanvasZoomControls zoom={zoom} setZoom={setZoom} />
+        </div>
+        
+        {/* Undo / Redo */}
+        <div className="pointer-events-auto flex items-center gap-0.5 h-10 px-1.5 rounded-full bg-floating-bg border border-floating-border shadow-sm">
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <motion.button
+                  whileHover={past.length > 0 ? { scale: 1.05 } : {}}
+                  whileTap={past.length > 0 ? { scale: 0.95 } : {}}
+                  className={`p-1.5 rounded-full transition-colors ${past.length > 0 ? 'text-muted-foreground hover:text-foreground hover:bg-secondary' : 'text-muted-foreground/30 cursor-not-allowed'}`}
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    undo();
+                  }}
+                  disabled={past.length === 0}
+                >
+                  <ArrowCounterClockwise size={18} />
+                </motion.button>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={8} className="pointer-events-none text-[11px] font-medium px-2.5 py-1 bg-floating-bg border border-floating-border text-foreground shadow-xl z-[100]">
+                <p>Undo ({modKey} + Z)</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          {/* Separator */}
+          <div className="w-[1px] h-4 bg-border mx-0.5" />
+
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <motion.button
+                  whileHover={future.length > 0 ? { scale: 1.05 } : {}}
+                  whileTap={future.length > 0 ? { scale: 0.95 } : {}}
+                  className={`p-1.5 rounded-full transition-colors ${future.length > 0 ? 'text-muted-foreground hover:text-foreground hover:bg-secondary' : 'text-muted-foreground/30 cursor-not-allowed'}`}
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    redo();
+                  }}
+                  disabled={future.length === 0}
+                >
+                  <ArrowClockwise size={18} />
+                </motion.button>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={8} className="pointer-events-none text-[11px] font-medium px-2.5 py-1 bg-floating-bg border border-floating-border text-foreground shadow-xl z-[100]">
+                <p>Redo ({modKey} + {isMac ? 'Shift + Z' : 'Y'})</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </motion.div>
 

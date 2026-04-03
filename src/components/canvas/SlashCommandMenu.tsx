@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Table, Code, Robot, Folder, Sun, Moon, CheckCircle, TextAa, GridFour, ShareNetwork, MagnifyingGlassPlus, MagnifyingGlassMinus, Bug, CornersOut, Trash, Minus } from '@phosphor-icons/react';
+import { Table, Code, Robot, Folder, Sun, Moon, CheckCircle, TextAa, GridFour, ShareNetwork, MagnifyingGlassPlus, MagnifyingGlassMinus, Bug, CornersOut, Trash, Minus, ArrowCounterClockwise, ArrowClockwise } from '@phosphor-icons/react';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { useSchemaStore } from '@/store/schemaStore';
 
@@ -14,7 +14,7 @@ interface Props {
 
 export const SlashCommandMenu: React.FC<Props> = ({ position, onSelect, onAskAI, onClose }) => {
   const { theme, setTheme, fontPreference, setFontPreference } = usePreferencesStore();
-  const { showGrid, toggleGrid, zoom, setZoom } = useSchemaStore();
+  const { showGrid, toggleGrid, zoom, setZoom, undo, redo } = useSchemaStore();
   const [filter, setFilter] = useState('');
   const [activeIdx, setActiveIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -24,6 +24,8 @@ export const SlashCommandMenu: React.FC<Props> = ({ position, onSelect, onAskAI,
     { id: 'table', label: 'Add Table', icon: Table },
     { id: 'group', label: 'Create Group', icon: Folder },
     { id: 'sql', label: 'View SQL', icon: Code },
+    { id: 'undo', label: 'Undo', icon: ArrowCounterClockwise },
+    { id: 'redo', label: 'Redo', icon: ArrowClockwise },
     { id: 'chat-expand', label: 'Expand Chat', icon: CornersOut },
     { id: 'chat-minimize', label: 'Minimize Chat', icon: Minus },
     { id: 'chat-clear', label: 'Clear Chat', icon: Trash },
@@ -89,6 +91,8 @@ export const SlashCommandMenu: React.FC<Props> = ({ position, onSelect, onAskAI,
     if (id === 'grid') { toggleGrid(); onClose(); return; }
     if (id === 'zoom-in') { setZoom(zoom + 0.1); onClose(); return; }
     if (id === 'zoom-out') { setZoom(zoom - 0.1); onClose(); return; }
+    if (id === 'undo') { undo(); onClose(); return; }
+    if (id === 'redo') { redo(); onClose(); return; }
     if (id === 'issue') { window.open('https://github.com/dev-hari-prasad/schema-pad/issues/new', '_blank'); onClose(); return; }
     if (id === 'chat-expand') { window.dispatchEvent(new CustomEvent('schema:open-ai-chat')); onClose(); return; }
     if (id === 'chat-minimize') { window.dispatchEvent(new CustomEvent('schema:minimize-ai-chat')); onClose(); return; }

@@ -18,6 +18,18 @@ export function getTableHeight(table: TableNode): number {
   return TABLE_HEADER_HEIGHT + table.columns.length * COLUMN_ROW_HEIGHT + 32;
 }
 
+export function getTableWidth(table: TableNode): number {
+  if (!table) return DEFAULT_TABLE_WIDTH;
+  const longestColumnNameLength = table.columns.reduce(
+    (max, col) => Math.max(max, col.name.length),
+    0
+  );
+  const estimatedNameWidth = Math.max(140, longestColumnNameLength * 8 + 26);
+  const fixedControlsWidth = 188;
+  const dynamicWidth = estimatedNameWidth + fixedControlsWidth;
+  return Math.max(DEFAULT_TABLE_WIDTH, table.width || DEFAULT_TABLE_WIDTH, dynamicWidth);
+}
+
 function getTablesForGroup(tables: TableNode[], groupId: string): TableNode[] {
   return tables.filter(t => t.groupId === groupId);
 }
@@ -30,7 +42,7 @@ function computeGroupBounds(tables: TableNode[], group: GroupNode): { x: number;
 
   const minX = Math.min(...groupTables.map(t => t.position.x));
   const minY = Math.min(...groupTables.map(t => t.position.y));
-  const maxX = Math.max(...groupTables.map(t => t.position.x + (t.width || DEFAULT_TABLE_WIDTH)));
+  const maxX = Math.max(...groupTables.map(t => t.position.x + getTableWidth(t)));
   const maxY = Math.max(...groupTables.map(t => t.position.y + getTableHeight(t)));
 
   return {
@@ -71,9 +83,17 @@ interface SchemaStore {
   editingColumnId: string | null;
   connectingFrom: { tableId: string; columnId: string } | null;
 
+  // History State
+  past: Pick<SchemaStore, 'tables' | 'groups' | 'relationships'>[];
+  future: Pick<SchemaStore, 'tables' | 'groups' | 'relationships'>[];
+
   // Actions
+  saveHistory: () => void;
+  undo: () => void;
+  redo: () => void;
   addTable: (position: { x: number; y: number }) => string;
   removeTable: (id: string) => void;
+  removeTables: (ids: string[]) => void;
   updateTableName: (id: string, name: string) => void;
   moveTable: (id: string, position: { x: number; y: number }) => void;
   duplicateTable: (id: string) => void;
@@ -186,7 +206,89 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
   editingColumnId: null,
   connectingFrom: null,
 
+  past: [],
+  future: [],
+
+  saveHistory: () => {
+    const s = get();
+    set((state) => {
+      // Don't save if current state is exactly the same as the top of the past stack
+      if (state.past.length > 0) {
+        const last = state.past[state.past.length - 1];
+        if (
+          last.tables === state.tables &&
+          last.groups === state.groups &&
+          last.relationships === state.relationships
+        ) {
+          return state;
+        }
+      }
+      
+      const snapshot = { tables: state.tables, groups: state.groups, relationships: state.relationships };
+      const newPast = [...state.past, snapshot];
+      if (newPast.length > 50) newPast.shift();
+      return { past: newPast, future: [] };
+    });
+  },
+
+  undo: () => {
+    set((s) => {
+      let newPast = [...s.past];
+      let prev: Pick<SchemaStore, 'tables' | 'groups' | 'relationships'> | undefined;
+
+      // Keep popping until we find a distinctly different state to restore
+      while (newPast.length > 0) {
+        prev = newPast[newPast.length - 1];
+        newPast = newPast.slice(0, -1);
+        if (prev.tables !== s.tables || prev.groups !== s.groups || prev.relationships !== s.relationships) {
+          break;
+        }
+        prev = undefined;
+      }
+
+      if (!prev) return s;
+
+      return {
+        past: newPast,
+        future: [{ tables: s.tables, groups: s.groups, relationships: s.relationships }, ...s.future],
+        tables: prev.tables,
+        groups: prev.groups,
+        relationships: prev.relationships,
+        selectedIds: [],
+      };
+    });
+  },
+
+  redo: () => {
+    set((s) => {
+      let newFuture = [...s.future];
+      let next: Pick<SchemaStore, 'tables' | 'groups' | 'relationships'> | undefined;
+
+      // Keep popping forward until we find a distinctly different state to restore
+      while (newFuture.length > 0) {
+        next = newFuture[0];
+        newFuture = newFuture.slice(1);
+        if (next.tables !== s.tables || next.groups !== s.groups || next.relationships !== s.relationships) {
+          break;
+        }
+        next = undefined;
+      }
+
+      if (!next) return s;
+
+      return {
+        past: [...s.past, { tables: s.tables, groups: s.groups, relationships: s.relationships }],
+        future: newFuture,
+        tables: next.tables,
+        groups: next.groups,
+        relationships: next.relationships,
+        selectedIds: [],
+      };
+    });
+  },
+
   addTable: (position) => {
+    get().saveHistory();
     const id = uid();
     const colId = uid();
     
@@ -220,14 +322,29 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
     return id;
   },
 
-  removeTable: (id) =>
+  removeTable: (id) => {
+    get().saveHistory();
     set((s) => ({
       tables: s.tables.filter((t) => t.id !== id),
       relationships: s.relationships.filter(
         (r) => r.sourceTableId !== id && r.targetTableId !== id
       ),
       selectedIds: s.selectedIds.filter((sid) => sid !== id),
-    })),
+    }));
+  },
+
+  removeTables: (ids) => {
+    if (ids.length === 0) return;
+    get().saveHistory();
+    const idSet = new Set(ids);
+    set((s) => ({
+      tables: s.tables.filter((t) => !idSet.has(t.id)),
+      relationships: s.relationships.filter(
+        (r) => !idSet.has(r.sourceTableId) && !idSet.has(r.targetTableId)
+      ),
+      selectedIds: s.selectedIds.filter((sid) => !idSet.has(sid)),
+    }));
+  },
 
   updateTableName: (id, name) =>
     set((s) => ({
@@ -240,6 +357,7 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
     })),
 
   duplicateTable: (id) => {
+    get().saveHistory();
     const table = get().tables.find((t) => t.id === id);
     if (!table) return;
     const newId = uid();
@@ -254,7 +372,8 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
     set((s) => ({ tables: [...s.tables, newTable] }));
   },
 
-  moveTableToGroup: (tableId, groupId) =>
+  moveTableToGroup: (tableId, groupId) => {
+    get().saveHistory();
     set((s) => {
       const table = s.tables.find((t) => t.id === tableId);
       if (!table) return s;
@@ -288,9 +407,11 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
           t.id === tableId ? { ...t, groupId, position: nextPos } : t
         ),
       };
-    }),
+    });
+  },
 
   addGroup: (position) => {
+    get().saveHistory();
     const id = uid();
     const group: GroupNode = {
       id,
@@ -305,6 +426,7 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
   },
 
   addTableToGroup: (groupId) => {
+    get().saveHistory();
     const state = get();
     const group = state.groups.find((g) => g.id === groupId);
     if (!group) return null;
@@ -362,13 +484,16 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
     return id;
   },
 
-  removeGroup: (id) =>
+  removeGroup: (id) => {
+    get().saveHistory();
     set((s) => ({
       groups: s.groups.filter((g) => g.id !== id),
       tables: s.tables.map((t) => (t.groupId === id ? { ...t, groupId: undefined } : t)),
-    })),
+    }));
+  },
 
-  removeGroupAndTables: (id) =>
+  removeGroupAndTables: (id) => {
+    get().saveHistory();
     set((s) => {
       const tableIdsToRemove = new Set(s.tables.filter(t => t.groupId === id).map(t => t.id));
 
@@ -379,17 +504,20 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
           (r) => !tableIdsToRemove.has(r.sourceTableId) && !tableIdsToRemove.has(r.targetTableId)
         ),
       };
-    }),
+    });
+  },
 
   updateGroupName: (id, name) =>
     set((s) => ({
       groups: s.groups.map((g) => (g.id === id ? { ...g, name } : g)),
     })),
 
-  updateGroupColor: (id, color) =>
+  updateGroupColor: (id, color) => {
+    get().saveHistory();
     set((s) => ({
       groups: s.groups.map((g) => (g.id === id ? { ...g, color } : g)),
-    })),
+    }));
+  },
 
   moveGroup: (id, position, delta) =>
     set((s) => {
@@ -419,7 +547,7 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
       if (tablesInside.length > 0) {
         const minTableX = Math.min(...tablesInside.map((t) => t.position.x));
         const minTableY = Math.min(...tablesInside.map((t) => t.position.y));
-        const maxTableX = Math.max(...tablesInside.map((t) => t.position.x + t.width));
+        const maxTableX = Math.max(...tablesInside.map((t) => t.position.x + getTableWidth(t)));
         const maxTableY = Math.max(...tablesInside.map((t) => t.position.y + getTableHeight(t)));
 
         const mustLeft = minTableX - GROUP_PAD_LEFT;
@@ -444,6 +572,7 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
     }),
 
   addColumn: (tableId) => {
+    get().saveHistory();
     const colId = uid();
     
     // Generate a unique column name
@@ -490,7 +619,8 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
       ),
     })),
 
-  removeColumn: (tableId, columnId) =>
+  removeColumn: (tableId, columnId) => {
+    get().saveHistory();
     set((s) => ({
       tables: s.tables.map((t) =>
         t.id === tableId
@@ -502,24 +632,30 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
           !(r.sourceTableId === tableId && r.sourceColumnId === columnId) &&
           !(r.targetTableId === tableId && r.targetColumnId === columnId)
       ),
-    })),
+    }));
+  },
 
   addRelationship: (rel) => {
+    get().saveHistory();
     const id = uid();
     set((s) => ({ relationships: [...s.relationships, { ...rel, id }] }));
   },
 
-  removeRelationship: (id) =>
+  removeRelationship: (id) => {
+    get().saveHistory();
     set((s) => ({
       relationships: s.relationships.filter((r) => r.id !== id),
-    })),
+    }));
+  },
 
-  updateRelationshipCardinality: (id, cardinality) =>
+  updateRelationshipCardinality: (id, cardinality) => {
+    get().saveHistory();
     set((s) => ({
       relationships: s.relationships.map((r) =>
         r.id === id ? { ...r, cardinality } : r
       ),
-    })),
+    }));
+  },
 
   setPan: (pan) => set({ pan }),
   setZoom: (zoom) => set({ zoom: clampZoom(zoom) }),
@@ -535,7 +671,8 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
   setEditingColumnId: (id) => set({ editingColumnId: id }),
   setConnectingFrom: (from) => set({ connectingFrom: from }),
 
-  clearAll: () =>
+  clearAll: () => {
+    get().saveHistory();
     set({
       tables: [],
       groups: [],
@@ -543,9 +680,11 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
       selectedIds: [],
       editingTableId: null,
       editingColumnId: null,
-    }),
+    });
+  },
 
   importSchema: (sql) => {
+    get().saveHistory();
     import('@/utils/sqlParser').then(({ parseSql }) => {
       const { tables: parsedTables, relationships: parsedRelationships } = parseSql(sql);
       set((state) => {

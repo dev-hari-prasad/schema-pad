@@ -23,7 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full font-manrope-local" suppressHydrationWarning>
-      <body className="h-full font-sans antialiased bg-background text-foreground">
+      <body className="h-full font-sans antialiased bg-background text-foreground" suppressHydrationWarning>
         <QueryProvider>
           <TooltipProvider>
             <Toaster />
