@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSchemaStore } from '@/store/schemaStore';
-import { usePreferencesStore } from '@/store/preferencesStore';
 
 /**
  * Hand-drawn style SVG arrow path generator using a simple quadratic bezier.
@@ -57,15 +56,51 @@ const ArrowHead: React.FC<{ x: number; y: number; angle: number; color: string }
 export const WelcomeOverlay: React.FC = () => {
   const tables = useSchemaStore((s) => s.tables);
   const groups = useSchemaStore((s) => s.groups);
-  const chatDockPosition = usePreferencesStore((s) => s.chatDockPosition);
   const [dismissed, setDismissed] = useState(false);
   const [dimensions, setDimensions] = useState({ w: 0, h: 0 });
+  const [anchors, setAnchors] = useState<{
+    toolbar: DOMRect | null;
+    chatComposer: DOMRect | null;
+  }>({
+    toolbar: null,
+    chatComposer: null,
+  });
 
   useEffect(() => {
-    const update = () => setDimensions({ w: window.innerWidth, h: window.innerHeight });
+    const update = () => {
+      setDimensions({ w: window.innerWidth, h: window.innerHeight });
+
+      const toolbar = document.querySelector('[data-onboarding="toolbar-main"]');
+      const chatComposer = document.querySelector('[data-onboarding="chat-composer"]');
+
+      setAnchors({
+        toolbar: toolbar instanceof HTMLElement ? toolbar.getBoundingClientRect() : null,
+        chatComposer: chatComposer instanceof HTMLElement ? chatComposer.getBoundingClientRect() : null,
+      });
+    };
+
     update();
+
+    // Capture final positions after entrance animations settle.
+    const settleTimer = window.setTimeout(update, 420);
+    const lateSettleTimer = window.setTimeout(update, 3200);
+
+    const resizeObserver = new ResizeObserver(() => {
+      update();
+    });
+
+    const toolbarEl = document.querySelector('[data-onboarding="toolbar-main"]');
+    const chatComposerEl = document.querySelector('[data-onboarding="chat-composer"]');
+    if (toolbarEl instanceof HTMLElement) resizeObserver.observe(toolbarEl);
+    if (chatComposerEl instanceof HTMLElement) resizeObserver.observe(chatComposerEl);
+
     window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.clearTimeout(settleTimer);
+      window.clearTimeout(lateSettleTimer);
+      resizeObserver.disconnect();
+    };
   }, []);
 
   const isEmpty = tables.length === 0 && groups.length === 0;
@@ -80,29 +115,62 @@ export const WelcomeOverlay: React.FC = () => {
 
   const { w, h } = dimensions;
 
+  const toolbarTarget = anchors.toolbar
+    ? {
+      to: {
+        x: anchors.toolbar.left + 120,
+        y: anchors.toolbar.bottom + 14,
+      },
+    }
+    : {
+      to: {
+        x: w / 2 - 60,
+        y: 62,
+      },
+    };
+
+  const toolbarFrom = {
+    x: toolbarTarget.to.x - 30,
+    y: toolbarTarget.to.y + 40,
+  };
+
+  const chatTarget = anchors.chatComposer
+    ? {
+      to: {
+        x: anchors.chatComposer.left + 65,
+        y: anchors.chatComposer.top - 12,
+      },
+    }
+    : {
+      to: {
+        x: w - 225,
+        y: h - 61,
+      },
+    };
+
+  const chatFrom = {
+    x: chatTarget.to.x - 45,
+    y: chatTarget.to.y - 32,
+  };
+
   // Compute absolute positions for arrows based on actual viewport
   const annotations = [
     {
-      id: 'logo',
-      label: 'Hover the logo for\na sweet effect!',
-      fromAbs: { x: 75, y: 95 },
-      toAbs: { x: 50, y: 70 },
-      curvature: -0.2,
-      delay: 0.1,
-      labelStyle: { top: 90, left: 85, textAlign: 'left' } as React.CSSProperties,
-    },
-    {
       id: 'toolbar',
       label: 'Add tables, toggle grid,\nimport & view SQL, and settings',
-      fromAbs: { x: w / 2 + 40, y: 110 },
-      toAbs: { x: w / 2 - 10, y: 70 },
-      curvature: -0.2, // Bows leftwards
+      fromAbs: toolbarFrom,
+      toAbs: toolbarTarget.to,
+      curvature: 0.16,
       delay: 0.25,
-      labelStyle: { top: 100, left: w / 2 + 50, textAlign: 'left', transform: 'translateX(0)' } as React.CSSProperties,
+      labelStyle: {
+        top: toolbarFrom.y - 12,
+        right: w - toolbarFrom.x + 8,
+        textAlign: 'right',
+      } as React.CSSProperties,
     },
     {
       id: 'share',
-      label: 'Share your canvas, or\nstar the code!',
+      label: 'Share canvas, or\nstar the code!',
       fromAbs: { x: w - 75, y: 95 },
       toAbs: { x: w - 50, y: 70 },
       curvature: 0.2,
@@ -111,21 +179,25 @@ export const WelcomeOverlay: React.FC = () => {
     },
     {
       id: 'ai-chat',
-      label: chatDockPosition === 'bottom-right' ? 'Zoom controls\n& shortcuts' : 'Ask AI to help build\nor just chat',
-      fromAbs: { x: w / 2 - 95, y: h - 98 },
-      toAbs: { x: w / 2 - 60, y: h - 68 },
-      curvature: -0.2, // Swoop curved in the reversed direction
+      label: 'Zoom controls\n& shortcuts',
+      fromAbs: { x: 178, y: h - 86 },
+      toAbs: { x: 136, y: h - 58 },
+      curvature: -0.14,
       delay: 0.55,
-      labelStyle: { bottom: 115, right: `calc(50% + 120px)`, textAlign: 'right' } as React.CSSProperties,
+      labelStyle: { bottom: 92, left: 176, textAlign: 'left' } as React.CSSProperties,
     },
     {
       id: 'zoom-help',
-      label: chatDockPosition === 'bottom-right' ? 'Ask AI to help build\nor just chat' : 'Zoom controls\n& shortcuts',
-      fromAbs: { x: w - 90, y: h - 80 },
-      toAbs: { x: w - 60, y: h - 60 },
-      curvature: -0.2,
+      label: 'Ask AI for help\nor just chat',
+      fromAbs: chatFrom,
+      toAbs: chatTarget.to,
+      curvature: -0.3,
       delay: 0.65,
-      labelStyle: { bottom: 95, right: 115, textAlign: 'right' } as React.CSSProperties,
+      labelStyle: {
+        bottom: h - chatFrom.y - 8,
+        right: w - chatFrom.x + 8,
+        textAlign: 'right',
+      } as React.CSSProperties,
     },
   ];
 
@@ -213,9 +285,9 @@ export const WelcomeOverlay: React.FC = () => {
           {/* Center welcome message - strictly centered horizontally, adjusted slightly up for bottom elements */}
           <div
             className="absolute pointer-events-none"
-            style={{ 
-              top: '44%', 
-              left: '50%', 
+            style={{
+              top: '44%',
+              left: '50%',
               transform: 'translate(-50%, -50%)',
               width: '100%',
               maxWidth: '448px'
@@ -233,14 +305,14 @@ export const WelcomeOverlay: React.FC = () => {
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.3, duration: 0.5 }}
               >
-                <div className="flex items-center gap-2.5 bg-floating-bg border border-floating-border shadow-md rounded-xl py-2 px-4 shrink-0">
+                <div className="flex items-center gap-2.5 shrink-0">
                   <img
                     src="/Icon.png"
                     alt="Schema Pad Logo"
-                    className="w-6 h-6 object-contain"
+                    className="w-9 h-9 object-contain drop-shadow-sm"
                   />
                   <h2
-                    className="text-[20px] font-semibold text-foreground tracking-tight"
+                    className="text-[25px] font-bold text-orange-600 dark:text-[#d44c0c] tracking-tight drop-shadow-sm"
                     style={{ fontFamily: '"ManropeLocal", "Manrope", ui-sans-serif, system-ui, sans-serif' }}
                   >
                     Schema Pad
@@ -249,17 +321,17 @@ export const WelcomeOverlay: React.FC = () => {
               </motion.div>
 
               <motion.p
-                className="text-base text-muted-foreground flex justify-center w-full leading-relaxed mb-5"
+                className="text-base text-muted-foreground flex justify-center w-full leading-relaxed mb-5 leading-tight"
                 style={{ fontFamily: '"ManropeLocal", "Manrope", ui-sans-serif, system-ui, sans-serif' }}
                 initial={{ y: 15, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.5, duration: 0.5 }}
               >
                 <span className="max-w-[320px]">
-                  Design your databases visually on an infinite canvas, powered by Agentic AI.
+                  Design your database schema visually on an canvas, powered by Agentic AI.
                 </span>
               </motion.p>
-  
+
               <motion.div
                 className="flex flex-col items-center gap-2 w-full text-[13px] text-muted-foreground/80"
                 style={{ fontFamily: '"ManropeLocal", "Manrope", ui-sans-serif, system-ui, sans-serif' }}
@@ -267,23 +339,23 @@ export const WelcomeOverlay: React.FC = () => {
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.7, duration: 0.5 }}
               >
-                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
+                <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
                   <span className="flex items-center gap-1.5 whitespace-nowrap">
-                    <kbd className="bg-secondary/60 px-2 py-0.5 rounded text-[11px] font-bold border border-border font-mono text-foreground leading-none">T</kbd>
+                    <kbd className="bg-secondary/60 w-[22px] h-[22px] inline-flex items-center justify-center rounded text-[11px] font-bold border border-border font-mono text-foreground leading-none">T</kbd>
                     <span>New table</span>
                   </span>
-                  
-                  <div className="w-px h-3.5 bg-foreground/40 mx-2" />
-                  
+
+                  <div className="w-px h-3.5 bg-foreground/40 mx-1.5" />
+
                   <span className="flex items-center gap-1.5 whitespace-nowrap">
-                    <kbd className="bg-secondary/60 px-2 py-0.5 rounded text-[11px] font-bold border border-border font-mono text-foreground leading-none">/</kbd>
+                    <kbd className="bg-secondary/60 w-[22px] h-[22px] inline-flex items-center justify-center rounded text-[11px] font-bold border border-border font-mono text-foreground leading-none">/</kbd>
                     <span>Commands</span>
                   </span>
-                  
-                  <div className="w-px h-3.5 bg-foreground/40 mx-2" />
-                  
+
+                  <div className="w-px h-3.5 bg-foreground/40 mx-1.5" />
+
                   <span className="flex items-center gap-1.5 whitespace-nowrap">
-                    <kbd className="bg-secondary/60 px-2 py-0.5 rounded text-[11px] font-bold border border-border font-mono text-foreground leading-none">V</kbd>
+                    <kbd className="bg-secondary/60 w-[22px] h-[22px] inline-flex items-center justify-center rounded text-[11px] font-bold border border-border font-mono text-foreground leading-none">V</kbd>
                     <span>View SQL</span>
                   </span>
                 </div>

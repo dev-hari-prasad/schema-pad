@@ -286,6 +286,15 @@ const SchemaCanvas: React.FC = () => {
     setSlashMenu(null);
   }, []);
 
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return <div className="relative w-full h-screen overflow-hidden bg-canvas-bg no-select" />;
+  }
+
   return (
     <div className="relative w-full h-screen overflow-hidden bg-canvas-bg no-select">
       <ContextMenu>
@@ -413,24 +422,17 @@ const SchemaCanvas: React.FC = () => {
       {sqlPanelOpen && <SQLPanel onClose={() => setSqlPanelOpen(false)} />}
       <BottomChatInput />
 
-      {/* Status bar (bottom-left) */}
-      <div className="absolute bottom-3 left-3 flex items-center gap-3 text-xs text-muted-foreground font-medium z-10 pointer-events-none">
-        <span>{tables.length} table{tables.length !== 1 ? 's' : ''}</span>
-      </div>
-
-      {/* Zoom at bottom center when chat is docked bottom-right */}
-      {chatDockPosition === 'bottom-right' && (
-        <motion.div
-          initial={{ y: 18, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.05, duration: 0.28, ease: 'easeOut' }}
-          className="absolute inset-x-0 bottom-3 z-10 flex justify-center pointer-events-none"
-        >
-          <div className="pointer-events-auto">
-            <CanvasZoomControls zoom={zoom} setZoom={setZoom} />
-          </div>
-        </motion.div>
-      )}
+      {/* Zoom controls (bottom-left) */}
+      <motion.div
+        initial={{ y: 18, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.05, duration: 0.28, ease: 'easeOut' }}
+        className="absolute bottom-3 left-3 z-10 pointer-events-none"
+      >
+        <div className="pointer-events-auto">
+          <CanvasZoomControls zoom={zoom} setZoom={setZoom} />
+        </div>
+      </motion.div>
 
       {/* Bottom Right Workspace Controls (hide ? when chat is docked bottom-right) */}
       {chatDockPosition !== 'bottom-right' && (
@@ -473,7 +475,6 @@ const SchemaCanvas: React.FC = () => {
             </div>
           </div>
 
-          {chatDockPosition === 'center' && <CanvasZoomControls zoom={zoom} setZoom={setZoom} />}
         </motion.div>
       )}
     </div>
