@@ -212,6 +212,18 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
   saveHistory: () => {
     const s = get();
     set((state) => {
+      // Don't save if current state is exactly the same as the top of the past stack
+      if (state.past.length > 0) {
+        const last = state.past[state.past.length - 1];
+        if (
+          last.tables === state.tables &&
+          last.groups === state.groups &&
+          last.relationships === state.relationships
+        ) {
+          return state;
+        }
+      }
+      
       const snapshot = { tables: state.tables, groups: state.groups, relationships: state.relationships };
       const newPast = [...state.past, snapshot];
       if (newPast.length > 50) newPast.shift();
@@ -221,9 +233,21 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
 
   undo: () => {
     set((s) => {
-      if (s.past.length === 0) return s;
-      const prev = s.past[s.past.length - 1];
-      const newPast = s.past.slice(0, -1);
+      let newPast = [...s.past];
+      let prev: Pick<SchemaStore, 'tables' | 'groups' | 'relationships'> | undefined;
+
+      // Keep popping until we find a distinctly different state to restore
+      while (newPast.length > 0) {
+        prev = newPast[newPast.length - 1];
+        newPast = newPast.slice(0, -1);
+        if (prev.tables !== s.tables || prev.groups !== s.groups || prev.relationships !== s.relationships) {
+          break;
+        }
+        prev = undefined;
+      }
+
+      if (!prev) return s;
+
       return {
         past: newPast,
         future: [{ tables: s.tables, groups: s.groups, relationships: s.relationships }, ...s.future],
@@ -237,9 +261,21 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
 
   redo: () => {
     set((s) => {
-      if (s.future.length === 0) return s;
-      const next = s.future[0];
-      const newFuture = s.future.slice(1);
+      let newFuture = [...s.future];
+      let next: Pick<SchemaStore, 'tables' | 'groups' | 'relationships'> | undefined;
+
+      // Keep popping forward until we find a distinctly different state to restore
+      while (newFuture.length > 0) {
+        next = newFuture[0];
+        newFuture = newFuture.slice(1);
+        if (next.tables !== s.tables || next.groups !== s.groups || next.relationships !== s.relationships) {
+          break;
+        }
+        next = undefined;
+      }
+
+      if (!next) return s;
+
       return {
         past: [...s.past, { tables: s.tables, groups: s.groups, relationships: s.relationships }],
         future: newFuture,
