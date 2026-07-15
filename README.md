@@ -17,10 +17,10 @@ A modern, interactive, web-based database schema designer and SQL generator.
 
 ---
 
-#### Deploy on Vercel
+#### One-click Deploy on Vercel
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/dev-hari-prasad/schema-pad)
 
-#### Deploy on Railway
+#### One-click Deploy on Railway
 [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/schema-pad?referralCode=G5z9My&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
 ---
