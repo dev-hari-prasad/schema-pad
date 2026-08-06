@@ -1,0 +1,121 @@
+name: Web and VS Code Extension CI
+
+on:
+  push:
+    branches: [master, vscode-extension-prisma-sync]
+    tags: ["v*"]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            extension/package-lock.json
+
+      - name: Install web dependencies
+        run: npm ci
+
+      - name: Install extension dependencies
+        working-directory: extension
+        run: npm ci
+
+      - name: Verify release tag matches extension version
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          node -e "const version = require('./extension/package.json').version; const expected = 'v' + version; if (process.env.RELEASE_TAG !== expected) { console.error('Release tag ' + process.env.RELEASE_TAG + ' does not match extension version ' + version + '. Expected ' + expected + '.'); process.exit(1); }"
+
+      - name: Build web application
+        run: npm run build
+
+      - name: Type-check extension and shared UI
+        working-directory: extension
+        run: npm run typecheck
+
+      - name: Test Prisma synchronization
+        working-directory: extension
+        run: npm test
+
+      - name: Build extension from the same web source
+        working-directory: extension
+        run: npm run build
+
+      - name: Package VSIX
+        working-directory: extension
+        run: npm run package:prebuilt
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: schemapad-vscode-${{ github.sha }}
+          path: extension/build/*.vsix
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download packaged extension
+        uses: actions/download-artifact@v4
+        with:
+          name: schemapad-vscode-${{ github.sha }}
+          path: dist
+
+      - name: Publish GitHub release artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" dist/*.vsix --generate-notes --verify-tag
+
+  marketplace:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Download packaged extension
+        uses: actions/download-artifact@v4
+        with:
+          name: schemapad-vscode-${{ github.sha }}
+          path: dist
+
+      - name: Require Marketplace publishing credentials
+        run: |
+          if [ -z "$VSCE_PAT" ]; then
+            echo "::error::Add the repository secret VSCE_PAT before publishing a release tag."
+            exit 1
+          fi
+
+      - name: Publish to Visual Studio Marketplace
+        run: npx --yes @vscode/vsce publish --packagePath dist/*.vsix --pat "$VSCE_PAT"

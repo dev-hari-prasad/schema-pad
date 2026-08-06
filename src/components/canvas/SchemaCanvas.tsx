@@ -22,6 +22,7 @@ import {
   FolderPlus,
   Code,
   Bug,
+  Compass,
   ArrowCounterClockwise,
   ArrowClockwise
 } from '@phosphor-icons/react';
@@ -69,7 +70,7 @@ const CanvasZoomControls: React.FC<{
   </div>
 );
 
-const SchemaCanvas: React.FC = () => {
+export const SchemaCanvas: React.FC<{ extensionMode?: boolean }> = ({ extensionMode = false }) => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const { tables, groups, relationships, pan, zoom, showGrid, selectedIds, connectingFrom, past, future } = useSchemaStore();
   const { setPan, setZoom, addTable, addGroup, setSelectedIds, setEditingTableId, setEditingColumnId, setConnectingFrom, undo, redo } = useSchemaStore();
@@ -231,10 +232,15 @@ const SchemaCanvas: React.FC = () => {
         return;
       }
 
-      if (e.key === '/' && !isMod && !isInput) {
-        e.preventDefault();
-        const rect = canvasRef.current?.getBoundingClientRect();
-        if (rect) setSlashMenu({ x: rect.width / 2, y: rect.height / 2 });
+      const isSlashKey = e.key === '/' || e.code === 'Slash' || e.code === 'NumpadDivide';
+      if (isSlashKey && !isMod) {
+        const isTableOrColumnEdit = target.closest('[data-editing="true"]') || target.classList.contains('schema-table-input');
+        if (!isTableOrColumnEdit) {
+          e.preventDefault();
+          const rect = canvasRef.current?.getBoundingClientRect();
+          if (rect) setSlashMenu({ x: rect.width / 2, y: rect.height / 2 });
+          return;
+        }
       }
       if (e.key === 'Escape') {
         setSlashMenu(null);
@@ -268,7 +274,16 @@ const SchemaCanvas: React.FC = () => {
       }
     };
     window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    const handleOpenSlashMenu = () => {
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (rect) setSlashMenu({ x: rect.width / 2, y: rect.height / 2 });
+    };
+    window.addEventListener('schema:open-slash-menu', handleOpenSlashMenu);
+
+    return () => {
+      window.removeEventListener('keydown', handler);
+      window.removeEventListener('schema:open-slash-menu', handleOpenSlashMenu);
+    };
   }, [setSlashMenu, setConnectingFrom, setEditingTableId, setEditingColumnId, addTable, screenToCanvas]);
 
   // Track mouse for relationship line drawing
@@ -442,6 +457,7 @@ const SchemaCanvas: React.FC = () => {
         />
       )}
 
+      <WelcomeOverlay extensionMode={extensionMode} />
       {sqlPanelOpen && <SQLPanel onClose={() => setSqlPanelOpen(false)} />}
       <BottomChatInput />
 
@@ -450,6 +466,7 @@ const SchemaCanvas: React.FC = () => {
         initial={{ y: 18, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.05, duration: 0.28, ease: 'easeOut' }}
+        data-onboarding="canvas-history-zoom"
         className="absolute bottom-3 left-3 z-10 pointer-events-none flex items-center gap-2"
       >
         <div className="pointer-events-auto">
@@ -522,29 +539,38 @@ const SchemaCanvas: React.FC = () => {
             <button className="flex items-center justify-center w-8 h-8 rounded-full bg-floating-bg border border-floating-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shadow-sm focus:outline-none">
               <Question size={15} weight="bold" />
             </button>
-            
-            <div className="absolute bottom-full right-0 mb-2 w-64 p-3 rounded-lg bg-popover text-popover-foreground border border-border shadow-xl opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200">
-              <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-3 px-1">Shortcuts</h4>
-              <div className="flex flex-col gap-2.5">
-                <div className="flex items-center gap-2.5 text-sm px-1">
-                  <div className="w-5 flex justify-center text-muted-foreground"><HandGrabbing size={16} /></div>
-                  <span>Click and drag to pan</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-sm px-1">
-                  <div className="w-5 flex justify-center text-muted-foreground"><Table size={16} /></div>
-                  <span>New table: <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs ml-1 border border-border">T</kbd></span>
-                </div>
-                <div className="flex items-center gap-2.5 text-sm px-1">
-                  <div className="w-5 flex justify-center text-muted-foreground"><Code size={16} /></div>
-                  <span>View SQL: <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs ml-1 border border-border">V</kbd></span>
-                </div>
-                <div className="flex items-center gap-2.5 text-sm px-1">
-                  <div className="w-5 flex justify-center text-muted-foreground"><Keyboard size={16} /></div>
-                  <span>Press <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs ml-1 border border-border">/</kbd> for commands</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-sm px-1">
-                  <div className="w-5 flex justify-center text-muted-foreground"><Bug size={16} /></div>
-                  <span>Report issue: <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs mx-1 border border-border">Ctrl</kbd> + <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs mr-1 border border-border">G</kbd></span>
+                        <div className="absolute bottom-full right-0 pb-2.5 opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0 transition-all duration-200">
+              <div className="w-64 p-3 rounded-lg bg-popover text-popover-foreground border border-border shadow-xl">
+                <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-3 px-1">Shortcuts</h4>
+                <div className="flex flex-col gap-2.5">
+                  <div className="flex items-center gap-2.5 text-sm px-1">
+                    <div className="w-5 flex justify-center text-muted-foreground"><HandGrabbing size={16} /></div>
+                    <span>Click and drag to pan</span>
+                  </div>
+                  <div className="flex items-center gap-2.5 text-sm px-1">
+                    <div className="w-5 flex justify-center text-muted-foreground"><Table size={16} /></div>
+                    <span>New table: <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs ml-1 border border-border">T</kbd></span>
+                  </div>
+                  <div className="flex items-center gap-2.5 text-sm px-1">
+                    <div className="w-5 flex justify-center text-muted-foreground"><Code size={16} /></div>
+                    <span>View SQL: <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs ml-1 border border-border">V</kbd></span>
+                  </div>
+                  <div className="flex items-center gap-2.5 text-sm px-1">
+                    <div className="w-5 flex justify-center text-muted-foreground"><Keyboard size={16} /></div>
+                    <span>Press <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs ml-1 border border-border">/</kbd> for commands</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => window.dispatchEvent(new CustomEvent('schema:reset-onboarding'))}
+                    className="flex items-center gap-2.5 text-sm px-1 py-0.5 rounded hover:bg-secondary/80 transition-colors text-left text-foreground cursor-pointer"
+                  >
+                    <div className="w-5 flex justify-center text-muted-foreground"><Compass size={16} /></div>
+                    <span>Show me around</span>
+                  </button>
+                  <div className="flex items-center gap-2.5 text-sm px-1">
+                    <div className="w-5 flex justify-center text-muted-foreground"><Bug size={16} /></div>
+                    <span>Report issue: <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs mx-1 border border-border">Ctrl</kbd> + <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs mr-1 border border-border">G</kbd></span>
+                  </div>
                 </div>
               </div>
             </div>

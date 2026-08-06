@@ -1,24 +1,30 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
-/node_modules
-/.pnp
+node_modules/
+.pnp
 .pnp.js
 .yarn/install-state.gz
 
 # testing
-/coverage
+coverage/
 
-# next.js
-/.next/
-/out/
+# next.js & build outputs
+.next/
+out/
+build/
+dist/
 
-# production
-/build
+# extension outputs & packages
+*.vsix
+.vsce
+extension/node_modules/
+extension/dist/
+extension/build/
+extension/*.vsix
 
 # misc
 .DS_Store
 *.pem
+*.log
 
 # debug
 npm-debug.log*

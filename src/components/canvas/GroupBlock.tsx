@@ -217,6 +217,8 @@ export const GroupBlock: React.FC<Props> = ({ group }) => {
                 onFocus={() => saveHistory()}
                 onChange={(e) => updateGroupName(group.id, e.target.value)}
                 onBlur={() => setIsEditingName(false)}
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === 'Escape') {
                     (e.target as HTMLInputElement).blur();
@@ -272,6 +274,8 @@ export const GroupBlock: React.FC<Props> = ({ group }) => {
                   value={group.name}
                   onFocus={() => saveHistory()}
                   onChange={(e) => updateGroupName(group.id, e.target.value)}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
                   className="w-full text-xs px-2 py-1 rounded bg-secondary text-foreground outline-none focus:ring-1 focus:ring-primary"
                   placeholder="Group Name"
                 />

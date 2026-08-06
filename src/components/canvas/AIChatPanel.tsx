@@ -13,6 +13,7 @@ import { usePreferencesStore } from '@/store/preferencesStore';
 import { generateSQL } from '@/utils/sqlGenerator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { requestChatCompletion } from '@/lib/chatTransport';
 
 interface Message {
   id: string;
@@ -642,27 +643,20 @@ ${schemaContext}${modeHint}`;
         }),
       ];
 
-      console.log('[AIChatPanel] Sending request to /api/chat', { model: config.model, provider: config.provider, messageCount: apiMessages.length, hasTools: !!tools });
+      console.log('[AIChatPanel] Sending AI request', { model: config.model, provider: config.provider, messageCount: apiMessages.length, hasTools: !!tools });
       
       const controller = new AbortController();
       abortRef.current = controller;
 
-      const response = await fetch(`/api/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: controller.signal,
-        body: JSON.stringify({
-          baseUrl: config.baseUrl,
-          apiKey: config.apiKey,
-          provider: config.provider,
-          model: config.model,
-          messages: apiMessages,
-          stream: true,
-          tools,
-        }),
-      });
+      const response = await requestChatCompletion({
+        baseUrl: config.baseUrl,
+        apiKey: config.apiKey,
+        provider: config.provider,
+        model: config.model,
+        messages: apiMessages,
+        stream: true,
+        tools,
+      }, controller.signal);
 
       console.log('[AIChatPanel] Response status:', response.status);
 
