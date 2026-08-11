@@ -4,6 +4,14 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSchemaStore } from '@/store/schemaStore';
 
+const getLogoSrc = (): string => {
+  if (typeof window !== "undefined" && window.__SCHEMA_PAD_ICON_URL__) {
+    return window.__SCHEMA_PAD_ICON_URL__;
+  }
+
+  return "/Icon.png";
+};
+
 /**
  * Hand-drawn style SVG arrow path generator using a simple quadratic bezier.
  * Calculates the exact tangent angle at the end so the arrowhead points
@@ -195,8 +203,6 @@ export const WelcomeOverlay: React.FC = () => {
       delay: 0.65,
       labelStyle: {
         bottom: h - chatFrom.y - 8,
-        right: w - chatFrom.x + 8,
-        textAlign: 'right',
       } as React.CSSProperties,
     },
   ];
@@ -307,7 +313,7 @@ export const WelcomeOverlay: React.FC = () => {
               >
                 <div className="flex items-center gap-2.5 shrink-0">
                   <img
-                    src="/Icon.png"
+                    src={getLogoSrc()}
                     alt="Schema Pad Logo"
                     className="w-9 h-9 object-contain drop-shadow-sm"
                   />

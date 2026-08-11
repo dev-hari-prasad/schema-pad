@@ -457,7 +457,6 @@ export const SchemaCanvas: React.FC<{ extensionMode?: boolean }> = ({ extensionM
         />
       )}
 
-      <WelcomeOverlay extensionMode={extensionMode} />
       {sqlPanelOpen && <SQLPanel onClose={() => setSqlPanelOpen(false)} />}
       <BottomChatInput />
 
