@@ -202,7 +202,12 @@
 .canvas-cursor-grabbing { cursor: grabbing; }
 .canvas-cursor-crosshair { cursor: crosshair; }
 
-/* Scrollbar styling */
+/* Dynamic theme-aware scrollbar styling */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -211,11 +216,11 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: hsl(0 0% 25%);
-  border-radius: 3px;
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(0 0% 35%);
+  background: hsl(var(--muted-foreground) / 0.55);
 }
 
 /* Selection prevention on canvas */

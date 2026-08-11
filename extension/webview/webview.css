@@ -1,0 +1,184 @@
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.schemapad-sync-status {
+  position: fixed;
+  top: 23px;
+  left: 64px;
+  bottom: auto;
+  z-index: 30;
+  display: flex;
+  width: 18px;
+  max-width: 18px;
+  height: 18px;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  overflow: hidden;
+  padding: 0 5px;
+  border: 1px solid hsl(var(--floating-border) / 0.4);
+  border-radius: 999px;
+  background: hsl(var(--floating-bg) / 0.85);
+  color: hsl(var(--muted-foreground));
+  font-size: 11px;
+  line-height: 1;
+  backdrop-filter: blur(8px);
+  transition: left 300ms ease, max-width 180ms ease, width 180ms ease, padding 180ms ease;
+}
+
+.schemapad-sync-status:hover,
+.schemapad-sync-status:focus-within,
+.schemapad-sync-status[data-expanded="true"] {
+  width: auto;
+  height: 26px;
+  max-width: min(500px, calc(100vw - 160px));
+  gap: 6px;
+  padding-right: 8px;
+  padding-left: 8px;
+}
+
+.schemapad-sync-details {
+  display: flex;
+  min-width: 0;
+  max-width: 0;
+  align-items: center;
+  gap: 7px;
+  overflow: hidden;
+  opacity: 0;
+  white-space: nowrap;
+  transition: max-width 180ms ease, opacity 120ms ease;
+}
+
+.schemapad-sync-status:hover .schemapad-sync-details,
+.schemapad-sync-status:focus-within .schemapad-sync-details,
+.schemapad-sync-status[data-expanded="true"] .schemapad-sync-details {
+  max-width: 640px;
+  opacity: 1;
+}
+
+.schemapad-sync-dot {
+  width: 5px;
+  height: 5px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: hsl(142 35% 55% / 0.65);
+  opacity: 0.85;
+}
+
+.schemapad-sync-status--loading .schemapad-sync-dot,
+.schemapad-sync-status--saving .schemapad-sync-dot {
+  background: hsl(40 50% 60% / 0.65);
+  animation: schemapad-pulse 1.4s ease-in-out infinite;
+}
+
+.schemapad-sync-status--error {
+  color: hsl(0 50% 60% / 0.85);
+}
+
+.schemapad-sync-status--error .schemapad-sync-dot {
+  background: hsl(0 50% 60% / 0.65);
+}
+
+.schemapad-sync-status button {
+  margin-left: 2px;
+  padding: 4px 7px;
+  border: 0;
+  border-radius: 999px;
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+
+@keyframes schemapad-pulse {
+  50% { opacity: 0.35; }
+}
+
+@media (max-width: 600px) {
+  .schemapad-sync-status {
+    top: auto;
+    bottom: 6px;
+    width: 27px;
+    max-width: 27px;
+  }
+
+  .schemapad-sync-status:hover,
+  .schemapad-sync-status:focus-within,
+  .schemapad-sync-status[data-expanded="true"] {
+    width: auto;
+    max-width: calc(100vw - 12px);
+  }
+
+  .schemapad-sync-details > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .schemapad-sync-status button {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .schemapad-toolbar-logo,
+  .schemapad-toolbar-extras,
+  .schemapad-zoom-controls {
+    display: none !important;
+  }
+
+  .schemapad-history-strip {
+    left: 8px !important;
+    bottom: 8px !important;
+  }
+
+  .schemapad-ai-dock {
+    right: 8px !important;
+    bottom: 8px !important;
+  }
+
+  .schemapad-ai-composer[data-open="false"] {
+    width: min(300px, calc(100vw - 130px)) !important;
+    height: 40px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .schemapad-toolbar-main {
+    right: 6px !important;
+    left: 6px !important;
+    display: flex;
+    justify-content: center;
+    transform: none !important;
+  }
+
+  .schemapad-toolbar-main-inner {
+    max-width: 100%;
+    gap: 0 !important;
+    padding: 5px !important;
+  }
+
+  .schemapad-ai-help {
+    display: none !important;
+  }
+
+  .schemapad-ai-composer[data-open="false"] {
+    width: min(240px, calc(100vw - 104px)) !important;
+    padding-right: 7px !important;
+    padding-left: 7px !important;
+  }
+}

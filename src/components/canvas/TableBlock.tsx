@@ -243,6 +243,8 @@ export const TableBlock: React.FC<TableBlockProps> = ({ table }) => {
                       onChange={(e) => updateTableName(table.id, e.target.value)}
                       onKeyDown={(e) => handleKeyDown(e)}
                       onBlur={() => setEditingTableId(null)}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
                     />
                   </TooltipTrigger>
                   <TooltipContent side="top" className="text-xs bg-destructive text-destructive-foreground border-0 px-2 py-1 font-medium shadow-lg">
@@ -488,6 +490,7 @@ const ColumnRow: React.FC<ColumnRowProps> = ({
                 onChange={(e) => updateColumn(tableId, column.id, { name: e.target.value })}
                 onKeyDown={onKeyDown}
                 onBlur={() => setEditingColumnId(null)}
+                onMouseDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
               />
             </TooltipTrigger>

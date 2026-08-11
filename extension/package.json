@@ -1,0 +1,185 @@
+{
+  "name": "schemapad-vscode",
+  "displayName": "Schema Pad",
+  "description": "Design database schemas visually in VS Code with interactive canvas, AI assistance, live code sync, and modern ORM and SQL exports.",
+  "version": "0.2.3",
+  "publisher": "DevHariPrasad",
+  "license": "MIT",
+  "icon": "dist/webview/assets/Icon.png",
+  "homepage": "https://schemapad.dev/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dev-hari-prasad/schema-pad.git",
+    "directory": "extension"
+  },
+  "bugs": {
+    "url": "https://github.com/dev-hari-prasad/schema-pad/issues"
+  },
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "prisma",
+    "drizzle",
+    "orm",
+    "sql",
+    "postgresql",
+    "mysql",
+    "schema",
+    "database",
+    "erd",
+    "database-design",
+    "data-modeling",
+    "schema-visualization",
+    "developer-tools",
+    "ai"
+  ],
+  "extensionKind": [
+    "ui"
+  ],
+  "main": "./dist/extension-node.js",
+  "browser": "./dist/extension-web.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "SchemaPad edits Prisma documents and is disabled while VS Code is in Restricted Mode."
+    }
+  },
+  "activationEvents": [
+    "onCustomEditor:schemaPad.prismaEditor",
+    "onCommand:schemaPad.open",
+    "onCommand:schemaPad.openContract",
+    "onCommand:schemaPad.openSplitView",
+    "onCommand:schemaPad.openLauncher",
+    "onCommand:schemaPad.showCommandCenter",
+    "onCommand:schemaPad.resetOnboarding",
+    "onView:schemaPad.nativeSidebarView",
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "schemaPad.open",
+        "title": "SchemaPad: Open Visual Editor",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "schemaPad.openContract",
+        "title": "SchemaPad: Open contract.prisma",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "schemaPad.openLauncher",
+        "title": "SchemaPad: Show Primary Sidebar"
+      },
+      {
+        "command": "schemaPad.openSplitView",
+        "title": "SchemaPad: Open in Split View",
+        "icon": "$(split-horizontal)"
+      },
+      {
+        "command": "schemaPad.showCommandCenter",
+        "title": "SchemaPad: Show Command Center",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "schemaPad.resetOnboarding",
+        "title": "SchemaPad: Reset Onboarding",
+        "icon": "$(refresh)"
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "schemaPad.prismaEditor",
+        "displayName": "SchemaPad Visual Editor",
+        "selector": [
+          {
+            "filenamePattern": "**/contract.prisma"
+          },
+          {
+            "filenamePattern": "**/*.prisma"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "schemapadPrimary",
+          "title": "SchemaPad",
+          "icon": "media/schemapad-activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "schemapadPrimary": [
+        {
+          "id": "schemaPad.nativeSidebarView",
+          "name": "SchemaPad",
+          "visibility": "visible"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "schemaPad.nativeSidebarView",
+        "contents": "Design and visualize database schemas interactively.\n\n[$(open-preview) Open SchemaPad](command:schemaPad.openContract)\n\nOpen the Prisma file on the left and SchemaPad on the right.\n\n[$(split-horizontal) Open in Split View](command:schemaPad.openSplitView)"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "schemaPad.openContract",
+          "when": "resourceExtname == .prisma",
+          "group": "navigation@20"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "schemaPad.openContract",
+          "when": "resourceExtname == .prisma",
+          "group": "navigation@20"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "schemaPad.openContract",
+          "when": "view == schemaPad.nativeSidebarView",
+          "group": "navigation@1"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "clean": "node ./scripts/clean.mjs",
+    "prepare:assets": "node ./scripts/prepare-assets.mjs",
+    "build:extension": "esbuild src/extension.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/extension-node.js && esbuild src/extension.ts --bundle --platform=browser --format=cjs --external:vscode --outfile=dist/extension-web.js",
+    "build:webview": "vite build",
+    "build": "npm run clean && npm run prepare:assets && npm run build:extension && npm run build:webview && npm run security-check",
+    "watch:extension": "esbuild src/extension.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/extension-node.js --watch",
+    "watch:webview": "vite build --watch",
+    "typecheck": "tsc --noEmit",
+    "security-check": "node ./scripts/security-check.mjs",
+    "test": "vitest run && npm run security-check -- --source-only",
+    "package:prebuilt": "node ./scripts/package.mjs",
+    "package": "npm run build && npm run package:prebuilt"
+  },
+  "dependencies": {
+    "@mrleebo/prisma-ast": "^0.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.16.5",
+    "@types/vscode": "^1.96.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "@vscode/vsce": "^3.6.0",
+    "esbuild": "^0.25.6",
+    "typescript": "^5.8.3",
+    "vite": "^6.1.0",
+    "vitest": "^3.0.0"
+  }
+}

@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import SchemaCanvas from "@/components/canvas/SchemaCanvas";
 import { usePreferencesStore } from "@/store/preferencesStore";
 
-export default function SchemaCanvasPage() {
+export default function SchemaCanvasPage({ extensionMode = false }: { extensionMode?: boolean }) {
   const { theme, canvasColor, fontPreference } = usePreferencesStore();
 
   useEffect(() => {
@@ -60,7 +60,7 @@ export default function SchemaCanvasPage() {
 
   return (
     <div className="w-full h-full">
-      <SchemaCanvas />
+      <SchemaCanvas extensionMode={extensionMode} />
     </div>
   );
 }

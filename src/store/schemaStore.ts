@@ -362,14 +362,27 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
     if (!table) return;
     const newId = uid();
     const horizontalGap = 28;
+    const suffixMatch = /^(.*?)(?:_(\d+))?$/.exec(table.name);
+    const baseName = suffixMatch?.[1] || table.name;
+    let nextIndex = suffixMatch?.[2] ? Number(suffixMatch[2]) + 1 : 2;
+    const existingNames = new Set(get().tables.map((candidate) => candidate.name.toLowerCase()));
+    let duplicateName = `${baseName}_${nextIndex}`;
+    while (existingNames.has(duplicateName.toLowerCase())) {
+      duplicateName = `${baseName}_${++nextIndex}`;
+    }
     const newTable: TableNode = {
       ...table,
       id: newId,
-      name: `${table.name}_copy`,
+      name: duplicateName,
       position: { x: table.position.x + table.width + horizontalGap, y: table.position.y },
       columns: table.columns.map((c) => ({ ...c, id: uid() })),
     };
-    set((s) => ({ tables: [...s.tables, newTable] }));
+    set((s) => ({
+      tables: [...s.tables, newTable],
+      selectedIds: [newId],
+      editingTableId: newId,
+      editingColumnId: null,
+    }));
   },
 
   moveTableToGroup: (tableId, groupId) => {

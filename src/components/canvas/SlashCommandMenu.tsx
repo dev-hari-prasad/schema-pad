@@ -102,10 +102,11 @@ export const SlashCommandMenu: React.FC<Props> = ({ position, onSelect, onAskAI,
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] animate-in fade-in duration-120" onClick={onClose} />
       <div
-        className="absolute z-50 w-[286px] rounded-xl border border-floating-border bg-floating-bg shadow-2xl animate-in fade-in zoom-in-95 duration-100 overflow-hidden flex flex-col"
-        style={{ left: position.x - 143, top: position.y - 180 }}
+        className="fixed left-1/2 top-1/2 z-[60] flex max-h-[310px] w-[min(360px,calc(100vw-24px))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-floating-border bg-floating-bg shadow-2xl animate-in fade-in duration-120 ease-out"
+        role="dialog"
+        aria-label="SchemaPad command palette"
       >
         <div className="flex items-center px-2.5 py-2 border-b border-border gap-1.5 bg-secondary/30">
           <span className="text-muted-foreground font-mono text-xs leading-none bg-secondary px-1.5 py-0.5 rounded border border-border">/</span>

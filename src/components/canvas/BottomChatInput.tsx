@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CornersOut, PaperPlaneRight, Stop, Question, HandGrabbing, MagnifyingGlass, Keyboard, Bug, CaretUp } from '@phosphor-icons/react';
+import { CornersOut, PaperPlaneRight, Stop, Question, HandGrabbing, MagnifyingGlass, Keyboard, Bug, CaretUp, Compass } from '@phosphor-icons/react';
 import { AIChatPanel } from '@/components/canvas/AIChatPanel';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -354,24 +354,34 @@ export const BottomChatInput = () => {
             >
               <Question size={15} weight="bold" />
             </button>
-            <div className="absolute bottom-full left-0 mb-2 w-60 p-3 rounded-lg bg-popover text-popover-foreground border border-border shadow-xl opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 z-50">
-              <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-3 px-1">Shortcuts</h4>
-              <div className="flex flex-col gap-2.5">
-                <div className="flex items-center gap-2.5 text-sm px-1">
-                  <div className="w-5 flex justify-center text-muted-foreground"><HandGrabbing size={16} /></div>
-                  <span>Click and drag to pan</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-sm px-1">
-                  <div className="w-5 flex justify-center text-muted-foreground"><MagnifyingGlass size={16} /></div>
-                  <span>Pinch to zoom</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-sm px-1">
-                  <div className="w-5 flex justify-center text-muted-foreground"><Keyboard size={16} /></div>
-                  <span>Press <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs ml-1 border border-border">/</kbd> for commands</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-sm px-1">
-                  <div className="w-5 flex justify-center text-muted-foreground"><Bug size={16} /></div>
-                  <span>Report issue: <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs mx-1 border border-border">Ctrl</kbd> + <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs mr-1 border border-border">G</kbd></span>
+            <div className="absolute bottom-full left-0 pb-2.5 opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0 transition-all duration-200 z-50">
+              <div className="w-60 p-3 rounded-lg bg-popover text-popover-foreground border border-border shadow-xl">
+                <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-3 px-1">Shortcuts</h4>
+                <div className="flex flex-col gap-2.5">
+                  <div className="flex items-center gap-2.5 text-sm px-1">
+                    <div className="w-5 flex justify-center text-muted-foreground"><HandGrabbing size={16} /></div>
+                    <span>Click and drag to pan</span>
+                  </div>
+                  <div className="flex items-center gap-2.5 text-sm px-1">
+                    <div className="w-5 flex justify-center text-muted-foreground"><MagnifyingGlass size={16} /></div>
+                    <span>Pinch to zoom</span>
+                  </div>
+                  <div className="flex items-center gap-2.5 text-sm px-1">
+                    <div className="w-5 flex justify-center text-muted-foreground"><Keyboard size={16} /></div>
+                    <span>Press <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs ml-1 border border-border">/</kbd> for commands</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => window.dispatchEvent(new CustomEvent('schema:reset-onboarding'))}
+                    className="flex items-center gap-2.5 text-sm px-1 py-0.5 rounded hover:bg-secondary/80 transition-colors text-left text-foreground cursor-pointer"
+                  >
+                    <div className="w-5 flex justify-center text-muted-foreground"><Compass size={16} /></div>
+                    <span>Show me around</span>
+                  </button>
+                  <div className="flex items-center gap-2.5 text-sm px-1">
+                    <div className="w-5 flex justify-center text-muted-foreground"><Bug size={16} /></div>
+                    <span>Report issue: <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs mx-1 border border-border">Ctrl</kbd> + <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs mr-1 border border-border">G</kbd></span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -397,7 +407,23 @@ export const BottomChatInput = () => {
             type="text"
             className="absolute inset-0 w-full h-full bg-transparent outline-none text-sm text-foreground placeholder:text-transparent z-10"
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === '/') {
+                setValue('');
+                window.dispatchEvent(new CustomEvent('schema:open-slash-menu'));
+                return;
+              }
+              setValue(val);
+            }}
+            onKeyDown={(e) => {
+              const isSlash = e.key === '/' || e.code === 'Slash' || e.code === 'NumpadDivide';
+              if (isSlash && (!value || value === '/')) {
+                e.preventDefault();
+                setValue('');
+                window.dispatchEvent(new CustomEvent('schema:open-slash-menu'));
+              }
+            }}
           />
           {!value && (
             <div className="absolute inset-0 flex items-center text-sm text-muted-foreground pointer-events-none truncate">
