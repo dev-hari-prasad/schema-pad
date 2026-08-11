@@ -11,9 +11,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DottedMap } from '@/components/ui/dotted-map';
-import { SchemaPadLogo } from '@/components/ui/SchemaPadLogo';
-
-import iconLogo from '@/assets/Icon.png';
 
 interface Props {
   onOpenSQL: () => void;
@@ -109,15 +106,11 @@ export const CanvasToolbar: React.FC<Props> = ({ onOpenSQL, isSQLOpen = false })
               transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
               style={{ paddingLeft: 10 }}
             >
-              {typeof window !== 'undefined' && window.__SCHEMA_PAD_ICON_URL__ ? (
-                <img
-                  src={window.__SCHEMA_PAD_ICON_URL__}
-                  alt="SchemaPad"
-                  className="w-5 h-5 rounded-sm object-contain shrink-0"
-                />
-              ) : (
-                <SchemaPadLogo className="w-5 h-5 shrink-0" />
-              )}
+              <img
+                src="/Icon.png"
+                alt=""
+                className="w-5 h-5 rounded-sm object-contain shrink-0"
+              />
               <AnimatePresence>
                 {showLogoText && (
                   <motion.span
@@ -154,57 +147,52 @@ export const CanvasToolbar: React.FC<Props> = ({ onOpenSQL, isSQLOpen = false })
               data-onboarding="toolbar-main"
               className="flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-floating-bg border border-floating-border shadow-sm"
             >
-              <div data-onboarding="toolbar-controls" className="flex items-center gap-1">
-                <ToolbarButton icon={<Table size={18} />} onClick={handleAddTable} tooltip="Add table" />
-                <ToolbarButton icon={<FolderPlus size={18} />} onClick={handleAddGroup} tooltip="Add group" />
-                <ToolbarButton
-                  icon={<GridFour size={18} />}
-                  onClick={toggleGrid}
-                  tooltip="Toggle grid (G)"
-                  active={showGrid}
-                />
-              </div>
-
+              <ToolbarButton icon={<Table size={18} />} onClick={handleAddTable} tooltip="Add table" />
+              <ToolbarButton icon={<FolderPlus size={18} />} onClick={handleAddGroup} tooltip="Add group" />
               <ToolbarDivider />
 
-              <div data-onboarding="toolbar-sql-import" className="flex items-center gap-1">
-                <ToolbarButton icon={<FileArrowDown size={18} />} onClick={() => fileInputRef.current?.click()} tooltip="Import SQL" />
-                <input type="file" accept=".sql,.txt" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
-                
-                {/* Animated View SQL Button */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <motion.button 
-                      layout
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={onOpenSQL}
-                      className={`flex items-center gap-1.5 p-2 rounded-md transition-colors font-medium overflow-hidden ${
-                        isSQLOpen
-                          ? 'bg-primary/15 text-primary'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-                      }`}
-                      initial={false}
-                      animate={{ width: showSQLText ? 'auto' : undefined, paddingRight: showSQLText ? 10 : undefined }}
-                    >
-                      <Code size={18} className="shrink-0" />
-                      {showSQLText && (
-                        <motion.span 
-                          initial={{ opacity: 0, width: 0 }}
-                          animate={{ opacity: 1, width: 'auto' }}
-                          exit={{ opacity: 0, width: 0 }}
-                          className="whitespace-nowrap text-[13px] mx-0.5"
-                        >
-                          View SQL
-                        </motion.span>
-                      )}
-                    </motion.button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs bg-black text-white px-2 py-1 shadow-lg border-0 font-medium">
-                    <p>View SQL</p>
-                  </TooltipContent>
-                </Tooltip>
-              </div>
+              <ToolbarButton
+                icon={<GridFour size={18} />}
+                onClick={toggleGrid}
+                tooltip="Toggle grid (G)"
+                active={showGrid}
+              />
+              <ToolbarButton icon={<FileArrowDown size={18} />} onClick={() => fileInputRef.current?.click()} tooltip="Import SQL" />
+              <input type="file" accept=".sql,.txt" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
+              
+              {/* Animated View SQL Button */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <motion.button 
+                    layout
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={onOpenSQL}
+                    className={`flex items-center gap-1.5 p-2 rounded-md transition-colors font-medium overflow-hidden ${
+                      isSQLOpen
+                        ? 'bg-primary/15 text-primary'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                    }`}
+                    initial={false}
+                    animate={{ width: showSQLText ? 'auto' : undefined, paddingRight: showSQLText ? 10 : undefined }}
+                  >
+                    <Code size={18} className="shrink-0" />
+                    {showSQLText && (
+                      <motion.span 
+                        initial={{ opacity: 0, width: 0 }}
+                        animate={{ opacity: 1, width: 'auto' }}
+                        exit={{ opacity: 0, width: 0 }}
+                        className="whitespace-nowrap text-[13px] mx-0.5"
+                      >
+                        View SQL
+                      </motion.span>
+                    )}
+                  </motion.button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs bg-black text-white px-2 py-1 shadow-lg border-0 font-medium">
+                  <p>View SQL</p>
+                </TooltipContent>
+              </Tooltip>
               
               <ToolbarDivider />
 

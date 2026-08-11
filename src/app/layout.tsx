@@ -10,9 +10,9 @@ export const metadata: Metadata = {
   description:
     "Schema Pad: design database schemas on a canvas, export SQL, and use AI with full schema context.",
   icons: {
-    icon: "/logo.svg",
-    shortcut: "/logo.svg",
-    apple: "/logo.svg",
+    icon: "/Icon.png",
+    shortcut: "/Icon.png",
+    apple: "/Icon.png",
   },
 };
 
