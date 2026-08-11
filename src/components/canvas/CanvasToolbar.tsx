@@ -17,6 +17,14 @@ interface Props {
   isSQLOpen?: boolean;
 }
 
+const getLogoSrc = (): string => {
+  if (typeof window !== "undefined" && window.__SCHEMA_PAD_ICON_URL__) {
+    return window.__SCHEMA_PAD_ICON_URL__;
+  }
+
+  return "/Icon.png";
+};
+
 export const CanvasToolbar: React.FC<Props> = ({ onOpenSQL, isSQLOpen = false }) => {
   const { zoom, showGrid, setZoom, toggleGrid, addTable, clearAll, pan, importSchema, addGroup } = useSchemaStore();
   const [showSQLText, setShowSQLText] = React.useState(true);
@@ -107,7 +115,7 @@ export const CanvasToolbar: React.FC<Props> = ({ onOpenSQL, isSQLOpen = false })
               style={{ paddingLeft: 10 }}
             >
               <img
-                src="/Icon.png"
+                src={getLogoSrc()}
                 alt=""
                 className="w-5 h-5 rounded-sm object-contain shrink-0"
               />
