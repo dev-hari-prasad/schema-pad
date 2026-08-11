@@ -6,6 +6,7 @@ import iconLogo from "@/assets/Icon.png";
 import { useSchemaStore } from '@/store/schemaStore';
 import { Onboarding } from '@/components/Onboarding/Onboarding';
 import { useOnboarding } from '@/components/Onboarding/useOnboarding';
+import { SchemaPadLogo } from '@/components/ui/SchemaPadLogo';
 
 export const WelcomeOverlay: React.FC<{ extensionMode?: boolean }> = ({ extensionMode = false }) => {
   const { isActive: isOnboardingActive } = useOnboarding(extensionMode);
@@ -60,11 +61,15 @@ export const WelcomeOverlay: React.FC<{ extensionMode?: boolean }> = ({ extensio
                 transition={{ delay: 0.1, duration: 0.4, ease: 'easeOut' }}
               >
                 <div className="flex items-center gap-2.5 shrink-0 mb-5">
-                  <img
-                    src={iconLogo as unknown as string}
-                    alt="Schema Pad Logo"
-                    className="w-9 h-9 object-contain drop-shadow-sm"
-                  />
+                  {typeof window !== 'undefined' && window.__SCHEMA_PAD_ICON_URL__ ? (
+                    <img
+                      src={window.__SCHEMA_PAD_ICON_URL__}
+                      alt="Schema Pad Logo"
+                      className="w-9 h-9 object-contain drop-shadow-sm"
+                    />
+                  ) : (
+                    <SchemaPadLogo className="w-9 h-9 drop-shadow-sm shrink-0" />
+                  )}
                   <h2
                     className="text-[25px] font-bold text-orange-600 dark:text-[#d44c0c] tracking-tight drop-shadow-sm"
                     style={{ fontFamily: '"ManropeLocal", "Manrope", ui-sans-serif, system-ui, sans-serif' }}

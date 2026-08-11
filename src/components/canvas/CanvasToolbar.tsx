@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DottedMap } from '@/components/ui/dotted-map';
+import { SchemaPadLogo } from '@/components/ui/SchemaPadLogo';
 
 import iconLogo from '@/assets/Icon.png';
 
@@ -108,11 +109,15 @@ export const CanvasToolbar: React.FC<Props> = ({ onOpenSQL, isSQLOpen = false })
               transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
               style={{ paddingLeft: 10 }}
             >
-              <img
-                src={typeof window !== 'undefined' && window.__SCHEMA_PAD_ICON_URL__ ? window.__SCHEMA_PAD_ICON_URL__ : (iconLogo as unknown as string)}
-                alt="SchemaPad"
-                className="w-5 h-5 rounded-sm object-contain shrink-0"
-              />
+              {typeof window !== 'undefined' && window.__SCHEMA_PAD_ICON_URL__ ? (
+                <img
+                  src={window.__SCHEMA_PAD_ICON_URL__}
+                  alt="SchemaPad"
+                  className="w-5 h-5 rounded-sm object-contain shrink-0"
+                />
+              ) : (
+                <SchemaPadLogo className="w-5 h-5 shrink-0" />
+              )}
               <AnimatePresence>
                 {showLogoText && (
                   <motion.span
